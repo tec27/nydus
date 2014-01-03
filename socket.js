@@ -87,3 +87,29 @@ Socket.prototype._onError = function(err) {
     this.emit('disconnect')
   }
 }
+
+Socket.prototype.sendResult = function(callId, results, cb) {
+  if (typeof results == 'function') {
+    cb = results
+    results = undefined
+  }
+  var message = { type: protocol.RESULT
+                , callId: callId
+                , results: results
+                }
+  this._send(protocol.encode(message), cb)
+}
+
+Socket.prototype.sendError = function(callId, errorCode, errorDesc, errorDetails, cb) {
+  if (typeof errorDetails == 'function') {
+    cb = errorDetails
+    errorDetails = undefined
+  }
+  var message = { type: protocol.ERROR
+                , callId: callId
+                , errorCode: errorCode
+                , errorDesc: errorDesc
+                , errorDetails: errorDetails
+                }
+  this._send(protocol.encode(message), cb)
+}

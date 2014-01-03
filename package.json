@@ -26,6 +26,7 @@
   "dependencies": {
     "nydus-protocol": "~0.0.1",
     "ws": "~0.4.31",
-    "node-uuid": "~1.4.1"
+    "node-uuid": "~1.4.1",
+    "routes": "~0.2.0"
   }
 }
