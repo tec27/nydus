@@ -94,7 +94,7 @@ function createReq(socket, callId, route) {
 function createRes(server, socket, callId) {
   var sent = false
 
-  function succeed(results) {
+  function complete(results) {
     if (sent) {
       server.emit('error', new Error('Only one response can be sent for a CALL.'))
       return
@@ -113,5 +113,5 @@ function createRes(server, socket, callId) {
     sent = true
   }
 
-  return { succeed: succeed, fail: fail }
+  return { complete: complete, fail: fail }
 }
