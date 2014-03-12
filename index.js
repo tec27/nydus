@@ -19,6 +19,8 @@ function NydusServer(httpServer, options) {
   this.router = createRouter()
 
   this._sockets = Object.create(null)
+  this._subscriptions = Object.create(null)
+  this._socketSubs = Object.create(null)
   this._options = options || {}
   for (var key in NydusServer.defaults) {
     if (typeof this._options[key] == 'undefined') {
@@ -42,22 +44,37 @@ function NydusServer(httpServer, options) {
 }
 util.inherits(NydusServer, EventEmitter)
 
+NydusServer.prototype.sendEvent = function(topicPath, event) {
+  var socketIds = Object.keys(this._subscriptions[topicPath] || {})
+  if (!socketIds.length) {
+    return
+  }
+  var sockets = socketIds.map(function(id) {
+    return this._sockets[id]
+  }, this)
+  Socket.sendEventToAll(sockets, topicPath, event)
+}
+
 NydusServer.prototype._onConnection = function(websocket) {
-  var id
-  do {
-    id = uuid.v4()
-  } while (this._sockets[id]) // avoid collisions (however unlikely)
+  var id = uuid.v4()
   var socket = new Socket(websocket, id)
   this._sockets[id] = socket
+  this._socketSubs[id] = Object.create(null)
 
   var self = this
   socket.on('disconnect', function() {
     delete self._sockets[id]
+    for (var topic in self._socketSubs[id]) {
+      delete self._subscriptions[topic][id]
+    }
+    delete self._socketSubs[id]
     self.emit('disconnect', socket)
   }).on('error', function() {}) // swallow socket errors if no one else handles them
 
   socket.on('message:call', function(message) {
     self._onCall(socket, message)
+  }).on('message:subscribe', function(message) {
+    self._onSubscribe(socket, message)
   })
 
   socket._send(this._welcomeMessage)
@@ -76,22 +93,54 @@ NydusServer.prototype._onCall = function(socket, message) {
   }
 
   var req = createReq(socket, message.callId, route)
-    , res = createRes(this, socket, message.callId)
+    , res = createRes(responseCallback, this, socket, message.callId)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
+
+  function responseCallback() {}
 }
 
-function createReq(socket, callId, route) {
+NydusServer.prototype._onSubscribe = function(socket, message) {
+  var self = this
+    , route = this.router.matchSubscribe(message.topicPath)
+  if (!route) {
+    return socket.sendError(message.requestId, 404, 'not found',
+        { message: message.procPath + ' could not be found' })
+  }
+
+  var req = createReq(socket, message.requestId, route)
+    , res = createRes(responseCallback, this, socket, message.requestId)
+    , args = [ req, res ].concat(message.params)
+
+  route.fn.apply(this, args)
+
+  function responseCallback(erred) {
+    if (erred) {
+      return
+    }
+
+    var sub = self._subscriptions[message.topicPath]
+      , socketSub = self._socketSubs[socket.id]
+    if (!sub) {
+      sub = self._subscriptions[message.topicPath] = Object.create(null)
+    }
+
+    sub[socket.id] = (sub[socket.id] || 0) + 1
+    socketSub[message.topicPath] = (socketSub[message.topicPath] || 0) + 1
+  }
+}
+
+function createReq(socket, requestId, route) {
   return  { socket: socket
-          , callId: callId
+          , requestId: requestId
           , route: route.route
           , params: route.params
           , splats: route.splats
           }
 }
 
-function createRes(server, socket, callId) {
+function createRes(cb, server, socket, requestId) {
   var sent = false
 
   function complete(results) {
@@ -99,8 +148,9 @@ function createRes(server, socket, callId) {
       server.emit('error', new Error('Only one response can be sent for a CALL.'))
       return
     }
+    cb(false)
     var args = Array.prototype.slice.apply(arguments)
-    socket.sendResult(callId, args)
+    socket.sendResult(requestId, args)
     sent = true
   }
 
@@ -109,7 +159,8 @@ function createRes(server, socket, callId) {
       server.emit('error', new Error('Only one response can be sent for a CALL.'))
       return
     }
-    socket.sendError(callId, errorCode, errorDesc, errorDetails)
+    cb(true)
+    socket.sendError(requestId, errorCode, errorDesc, errorDetails)
     sent = true
   }
 

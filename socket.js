@@ -113,3 +113,14 @@ Socket.prototype.sendError = function(callId, errorCode, errorDesc, errorDetails
                 }
   this._send(protocol.encode(message), cb)
 }
+
+Socket.sendEventToAll = function(sockets, topicPath, event) {
+  var message = { type: protocol.EVENT
+                , topicPath: topicPath
+                , event: event
+                }
+    , encoded = protocol.encode(message)
+  for (var i = 0, len = sockets.length; i < len; i++) {
+    sockets[i]._send(encoded)
+  }
+}
