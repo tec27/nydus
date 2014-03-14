@@ -75,6 +75,8 @@ NydusServer.prototype._onConnection = function(websocket) {
     self._onCall(socket, message)
   }).on('message:subscribe', function(message) {
     self._onSubscribe(socket, message)
+  }).on('message:unsubscribe', function(message) {
+    self._onUnsubscribe(socket,  message)
   })
 
   socket._send(this._welcomeMessage)
@@ -129,6 +131,25 @@ NydusServer.prototype._onSubscribe = function(socket, message) {
     sub[socket.id] = (sub[socket.id] || 0) + 1
     socketSub[message.topicPath] = (socketSub[message.topicPath] || 0) + 1
   }
+}
+
+NydusServer.prototype._onUnsubscribe = function(socket, message) {
+  var self = this
+    , sub = self._subscriptions[message.topicPath]
+    , socketSub = self._socketSubs[socket.id]
+  if (!sub || !sub[socket.id]) {
+    socket.sendError(message.requestId, 400, 'bad request', 'no subscriptions exist for this topic')
+    return
+  }
+
+  sub[socket.id]--
+  socketSub[message.topicPath]--
+  if (!sub[socket.id]) {
+    delete sub[socket.id]
+    delete socketSub[message.topicPath]
+  }
+
+  socket.sendResult(message.requestId)
 }
 
 function createReq(socket, requestId, route) {
