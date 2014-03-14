@@ -7,6 +7,7 @@ module.exports = function() {
 function NydusRouter() {
   this._callRouter = new Router()
   this._subRouter = new Router()
+  this._pubRouter = new Router()
 }
 
 NydusRouter.prototype.call = function(path, fn) {
@@ -19,10 +20,19 @@ NydusRouter.prototype.subscribe = function(path, fn) {
   return this
 }
 
+NydusRouter.prototype.publish = function(path, fn) {
+  this._pubRouter.addRoute(path, fn)
+  return this
+}
+
 NydusRouter.prototype.matchCall = function(path) {
   return this._callRouter.match(path)
 }
 
 NydusRouter.prototype.matchSubscribe = function(path) {
   return this._subRouter.match(path)
+}
+
+NydusRouter.prototype.matchPublish = function(path) {
+  return this._pubRouter.match(path)
 }

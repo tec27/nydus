@@ -76,7 +76,9 @@ NydusServer.prototype._onConnection = function(websocket) {
   }).on('message:subscribe', function(message) {
     self._onSubscribe(socket, message)
   }).on('message:unsubscribe', function(message) {
-    self._onUnsubscribe(socket,  message)
+    self._onUnsubscribe(socket, message)
+  }).on('message:publish', function(message) {
+    self._onPublish(socket, message)
   })
 
   socket._send(this._welcomeMessage)
@@ -150,6 +152,41 @@ NydusServer.prototype._onUnsubscribe = function(socket, message) {
   }
 
   socket.sendResult(message.requestId)
+}
+
+NydusServer.prototype._onPublish = function(socket, message) {
+  var self = this
+    , route = this.router.matchPublish(message.topicPath)
+  if (!route) {
+    return socket.sendError(message.requestId, 404, 'not found',
+        { message: message.procPath + ' could not be found' })
+  }
+
+  
+
+  var req = createReq(socket, message.requestId, route)
+    , args = [ req, message.event, complete ]
+
+  route.fn.apply(this, args)
+
+  function complete(event) {
+    var socketIds = Object.keys(self._subscriptions[message.topicPath] || {})
+    if (!socketIds.length) {
+      return
+    }
+    var sockets = socketIds.map(function(id) {
+      return self._sockets[id]
+    })
+
+    if (message.excludeMe) {
+      var index = sockets.indexOf(socket);
+      if (index != -1) {
+        sockets.splice(index, 1)
+      }
+    }
+
+    Socket.sendEventToAll(sockets, message.topicPath, event)
+  }
 }
 
 function createReq(socket, requestId, route) {
