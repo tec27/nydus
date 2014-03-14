@@ -162,8 +162,6 @@ NydusServer.prototype._onPublish = function(socket, message) {
         { message: message.procPath + ' could not be found' })
   }
 
-  
-
   var req = createReq(socket, message.requestId, route)
     , args = [ req, message.event, complete ]
 
