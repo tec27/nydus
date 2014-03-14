@@ -1,6 +1,7 @@
 var EventEmitter = require('events').EventEmitter
   , util = require('util')
   , protocol = require('nydus-protocol')
+  , idgen = require('idgen')
 
 module.exports = Socket
 
@@ -9,6 +10,8 @@ function Socket(websocket, id) {
   this.id = id
   this._websocket = websocket
   this.connected = true
+
+  this._outstandingReqs = Object.create(null)
 
   this._websocket.on('close', function(code, message) {
     var wasConnected = this.connected
@@ -59,9 +62,11 @@ Socket.prototype._onMessage = function(data, flags) {
       this.emit('message:call', message)
       break
     case protocol.RESULT:
+      this._onResultMessage(message)
       this.emit('message:result', message)
       break
     case protocol.ERROR:
+      this._onErrorMessage(message)
       this.emit('message:error', message)
       break
     case protocol.SUBSCRIBE:
@@ -85,6 +90,17 @@ Socket.prototype._onError = function(err) {
   this.emit('error', err)
   if (wasConnected) {
     this.emit('disconnect')
+  }
+}
+
+Socket.sendEventToAll = function(sockets, topicPath, event) {
+  var message = { type: protocol.EVENT
+                , topicPath: topicPath
+                , event: event
+                }
+    , encoded = protocol.encode(message)
+  for (var i = 0, len = sockets.length; i < len; i++) {
+    sockets[i]._send(encoded)
   }
 }
 
@@ -114,13 +130,43 @@ Socket.prototype.sendError = function(requestId, errorCode, errorDesc, errorDeta
   this._send(protocol.encode(message), cb)
 }
 
-Socket.sendEventToAll = function(sockets, topicPath, event) {
-  var message = { type: protocol.EVENT
-                , topicPath: topicPath
-                , event: event
+Socket.prototype.call = function(procPath, params, cb) {
+  var message = { type: protocol.CALL
+                , requestId: idgen(16)
+                , procPath: procPath
                 }
-    , encoded = protocol.encode(message)
-  for (var i = 0, len = sockets.length; i < len; i++) {
-    sockets[i]._send(encoded)
+    , callback = arguments.length > 1 ? arguments[arguments.length - 1] : function() {}
+    , callParams = Array.prototype.slice.call(arguments, 1, arguments.length - 1)
+  if (typeof callback != 'function') {
+    callback = function() {}
+    callParams.push(arguments[arguments.length - 1])
   }
+  message.params = callParams
+  this._outstandingReqs[message.requestId] = callback
+  this._send(protocol.encode(message))
+}
+
+Socket.prototype._onResultMessage = function(message) {
+  var cb = this._outstandingReqs[message.requestId]
+  if (!cb) {
+    return this._onError('Received a result for an unrecognized requestId: ' + message.requestId)
+  }
+  delete this._outstandingReqs[message.requestId]
+
+  var results = [ null /* err */ ].concat(message.results)
+  cb.apply(this, results)
+}
+
+Socket.prototype._onErrorMessage = function(message) {
+  var cb = this._outstandingReqs[message.requestId]
+  if (!cb) {
+    return this._onError('Received an error for an unrecognized requestId: ' + message.requestId)
+  }
+  delete this._outstandingReqs[message.requestId]
+
+  var err = { code: message.errorCode
+            , desc: message.errorDesc
+            , details: message.errorDetails
+            }
+  cb.call(this, err)
 }
