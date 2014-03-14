@@ -110,7 +110,7 @@ NydusServer.prototype._onSubscribe = function(socket, message) {
     , route = this.router.matchSubscribe(message.topicPath)
   if (!route) {
     return socket.sendError(message.requestId, 404, 'not found',
-        { message: message.procPath + ' could not be found' })
+        { message: message.topicPath + ' could not be found' })
   }
 
   var req = createReq(socket, message.requestId, route)
@@ -159,7 +159,7 @@ NydusServer.prototype._onPublish = function(socket, message) {
     , route = this.router.matchPublish(message.topicPath)
   if (!route) {
     return socket.sendError(message.requestId, 404, 'not found',
-        { message: message.procPath + ' could not be found' })
+        { message: message.topicPath + ' could not be found' })
   }
 
   var req = createReq(socket, message.requestId, route)
