@@ -92,12 +92,12 @@ NydusServer.prototype._onError = function(err) {
 NydusServer.prototype._onCall = function(socket, message) {
   var route = this.router.matchCall(message.procPath)
   if (!route) {
-    return socket.sendError(message.callId, 404, 'not found',
+    return socket.sendError(message.requestId, 404, 'not found',
         { message: message.procPath + ' could not be found' })
   }
 
-  var req = createReq(socket, message.callId, route)
-    , res = createRes(responseCallback, this, socket, message.callId)
+  var req = createReq(socket, message.requestId, route)
+    , res = createRes(responseCallback, this, socket, message.requestId)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
