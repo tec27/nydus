@@ -97,7 +97,7 @@ NydusServer.prototype._onCall = function(socket, message) {
   }
 
   var req = createReq(socket, message.requestId, route)
-    , res = createRes(responseCallback, this, socket, message.requestId)
+    , res = createRes(this, socket, message.requestId, responseCallback)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
@@ -114,7 +114,7 @@ NydusServer.prototype._onSubscribe = function(socket, message) {
   }
 
   var req = createReq(socket, message.requestId, route)
-    , res = createRes(responseCallback, this, socket, message.requestId)
+    , res = createRes(this, socket, message.requestId, responseCallback)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
@@ -196,7 +196,7 @@ function createReq(socket, requestId, route) {
           }
 }
 
-function createRes(cb, server, socket, requestId) {
+function createRes(server, socket, requestId, cb) {
   var sent = false
 
   function complete(results) {
