@@ -44,7 +44,7 @@ function NydusServer(httpServer, options) {
 }
 util.inherits(NydusServer, EventEmitter)
 
-NydusServer.prototype.sendEvent = function(topicPath, event) {
+NydusServer.prototype.publish = function(topicPath, event) {
   var socketIds = Object.keys(this._subscriptions[topicPath] || {})
   if (!socketIds.length) {
     return
