@@ -10,7 +10,7 @@ module.exports = function(httpServer, options) {
   return new NydusServer(httpServer, options)
 }
 
-NydusServer.defaults =  { serverAgent: 'NydusServer/0.0.1'
+NydusServer.defaults =  { serverAgent: 'NydusServer/0.1.0'
                         , pingInterval: 25000
                         , pingTimeout: 60000
                         }
