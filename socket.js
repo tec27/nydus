@@ -104,6 +104,24 @@ Socket.sendEventToAll = function(sockets, topicPath, event) {
   }
 }
 
+Socket.prototype.disconnect = function(code, data) {
+  var wasConnected = this.connected
+  this.connected = false
+  this._websocket.close(code || 1000, data)
+  if (wasConnected) {
+    this.emit('disconnect')
+  }
+}
+
+Socket.prototype.terminate = function() {
+  var wasConnected = this.connected
+  this.connected = false
+  this._websocket.terminate()
+  if (wasConnected) {
+    this.emit('disconnect')
+  }
+}
+
 Socket.prototype.sendResult = function(requestId, results, cb) {
   if (typeof results == 'function') {
     cb = results

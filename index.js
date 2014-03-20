@@ -11,6 +11,8 @@ module.exports = function(httpServer, options) {
 }
 
 NydusServer.defaults =  { serverAgent: 'NydusServer/0.0.1'
+                        , pingInterval: 25000
+                        , pingTimeout: 60000
                         }
 
 function NydusServer(httpServer, options) {
@@ -21,6 +23,9 @@ function NydusServer(httpServer, options) {
   this._sockets = Object.create(null)
   this._subscriptions = Object.create(null)
   this._socketSubs = Object.create(null)
+  this._pingTimeouts = Object.create(null)
+  this._pingIntervals = Object.create(null)
+
   this._options = options || {}
   for (var key in NydusServer.defaults) {
     if (typeof this._options[key] == 'undefined') {
@@ -68,6 +73,16 @@ NydusServer.prototype._onConnection = function(websocket) {
       delete self._subscriptions[topic][id]
     }
     delete self._socketSubs[id]
+
+    if (typeof self._pingTimeouts[id] != 'undefined') {
+      clearTimeout(self._pingTimeouts[id])
+      delete self._pingTimeouts[id]
+    }
+    if (typeof self._pingIntervals[id] != 'undefined') {
+      clearTimeout(self._pingIntervals[id])
+      delete self._pingIntervals[id]
+    }
+
     self.emit('disconnect', socket)
   }).on('error', function() {}) // swallow socket errors if no one else handles them
 
@@ -80,6 +95,8 @@ NydusServer.prototype._onConnection = function(websocket) {
   }).on('message:publish', function(message) {
     self._onPublish(socket, message)
   })
+
+  this._startPingInterval(socket)
 
   socket._send(this._welcomeMessage)
   this.emit('connection', socket)
@@ -185,6 +202,34 @@ NydusServer.prototype._onPublish = function(socket, message) {
 
     Socket.sendEventToAll(sockets, message.topicPath, event)
   }
+}
+
+NydusServer.prototype._sendPing = function(socket) {
+  delete this._pingIntervals[socket.id]
+
+  var self = this
+  this._pingTimeouts[socket.id] = setTimeout(function() {
+    socket.terminate()
+  }, this._options.pingTimeout)
+
+  socket.call('/_/ping', function(err) {
+    if (err) {
+      socket.terminate()
+      return
+    }
+
+    clearTimeout(self._pingTimeouts[socket.id])
+    delete self._pingTimeouts[socket.id]
+
+    self._startPingInterval(socket)
+  })
+}
+
+NydusServer.prototype._startPingInterval = function(socket) {
+  var self = this
+  this._pingIntervals[socket.id] = setTimeout(function() {
+    self._sendPing(socket)
+  }, this._options.pingInterval)
 }
 
 function createReq(socket, requestId, route) {
