@@ -10,9 +10,10 @@ module.exports = function(httpServer, options) {
   return new NydusServer(httpServer, options)
 }
 
-NydusServer.defaults =  { serverAgent: 'NydusServer/0.1.0'
+NydusServer.defaults =  { serverAgent: 'NydusServer/0.1.1'
                         , pingInterval: 25000
                         , pingTimeout: 60000
+                        , authorize: null
                         }
 
 function NydusServer(httpServer, options) {
@@ -86,20 +87,40 @@ NydusServer.prototype._onConnection = function(websocket) {
     self.emit('disconnect', socket)
   }).on('error', function() {}) // swallow socket errors if no one else handles them
 
-  socket.on('message:call', function(message) {
-    self._onCall(socket, message)
-  }).on('message:subscribe', function(message) {
-    self._onSubscribe(socket, message)
-  }).on('message:unsubscribe', function(message) {
-    self._onUnsubscribe(socket, message)
-  }).on('message:publish', function(message) {
-    self._onPublish(socket, message)
-  })
+  if (this._options.authorize) {
+    var req = websocket.upgradeReq
+      , info =  { origin: req.headers.origin
+                , secure: typeof req.connection.authorized != 'undefined' ||
+                    typeof req.connection.encrypted != 'undefined'
+                , req: req
+                }
+    this._options.authorize(info, function(authorized) {
+      if (authorized) {
+        initialize()
+      } else {
+        socket.disconnect(4001, 'unauthorized')
+      }
+    })
+  } else {
+    initialize()
+  }
 
-  this._startPingInterval(socket)
+  function initialize() {
+    socket.on('message:call', function(message) {
+      self._onCall(socket, message)
+    }).on('message:subscribe', function(message) {
+      self._onSubscribe(socket, message)
+    }).on('message:unsubscribe', function(message) {
+      self._onUnsubscribe(socket, message)
+    }).on('message:publish', function(message) {
+      self._onPublish(socket, message)
+    })
 
-  socket._send(this._welcomeMessage)
-  this.emit('connection', socket)
+    self._startPingInterval(socket)
+
+    socket._send(self._welcomeMessage)
+    self.emit('connection', socket)
+  }
 }
 
 NydusServer.prototype._onError = function(err) {
