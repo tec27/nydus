@@ -164,6 +164,15 @@ Socket.prototype.call = function(procPath, params, cb) {
   this._send(protocol.encode(message))
 }
 
+Socket.prototype.publish = function(topicPath, event) {
+  var message = { type: protocol.EVENT
+                , topicPath: topicPath
+                , event: event
+                }
+    , encoded = protocol.encode(message)
+  this._send(encoded)
+}
+
 Socket.prototype._onResultMessage = function(message) {
   var cb = this._outstandingReqs[message.requestId]
   if (!cb) {
