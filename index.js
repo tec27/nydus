@@ -94,8 +94,11 @@ NydusServer.prototype._onConnection = function(websocket) {
                     typeof req.connection.encrypted != 'undefined'
                 , req: req
                 }
-    this._options.authorize(info, function(authorized) {
+    this._options.authorize(info, function(authorized, handshakeData) {
       if (authorized) {
+        if (handshakeData) {
+          socket.handshake = handshakeData
+        }
         initialize()
       } else {
         socket.disconnect(4001, 'unauthorized')
