@@ -137,7 +137,7 @@ NydusServer.prototype._onCall = function(socket, message) {
         { message: message.procPath + ' could not be found' })
   }
 
-  var req = createReq(socket, message.requestId, route)
+  var req = createReq(socket, message.requestId, route, message.procPath)
     , res = createRes(this, socket, message.requestId, responseCallback)
     , args = [ req, res ].concat(message.params)
 
@@ -154,7 +154,7 @@ NydusServer.prototype._onSubscribe = function(socket, message) {
         { message: message.topicPath + ' could not be found' })
   }
 
-  var req = createReq(socket, message.requestId, route)
+  var req = createReq(socket, message.requestId, route, message.topicPath)
     , res = createRes(this, socket, message.requestId, responseCallback)
     , args = [ req, res ].concat(message.params)
 
@@ -203,7 +203,7 @@ NydusServer.prototype._onPublish = function(socket, message) {
         { message: message.topicPath + ' could not be found' })
   }
 
-  var req = createReq(socket, message.requestId, route)
+  var req = createReq(socket, message.requestId, route, message.topicPath)
     , args = [ req, message.event, complete ]
 
   route.fn.apply(this, args)
@@ -256,12 +256,13 @@ NydusServer.prototype._startPingInterval = function(socket) {
   }, this._options.pingInterval)
 }
 
-function createReq(socket, requestId, route) {
+function createReq(socket, requestId, route, path) {
   return  { socket: socket
           , requestId: requestId
           , route: route.route
           , params: route.params
           , splats: route.splats
+          , path: path
           }
 }
 
