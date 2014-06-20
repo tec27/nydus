@@ -5,12 +5,13 @@ var ws = require('ws')
   , uuid = require('node-uuid')
   , Socket = require('./socket')
   , createRouter = require('./router')
+  , packageJson = require('./package.json')
 
 module.exports = function(httpServer, options) {
   return new NydusServer(httpServer, options)
 }
 
-NydusServer.defaults =  { serverAgent: 'NydusServer/0.1.1'
+NydusServer.defaults =  { serverAgent: 'NydusServer/' + packageJson.version
                         , pingInterval: 25000
                         , pingTimeout: 60000
                         , authorize: null
