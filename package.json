@@ -1,6 +1,6 @@
 {
   "name": "nydus",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "index.js",
   "scripts": {
@@ -24,10 +24,10 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "dependencies": {
-    "nydus-protocol": "^0.1.0",
+    "nydus-protocol": "^0.2.0",
     "ws": "^0.4.31",
-    "node-uuid": "~1.4.1",
-    "routes": "~1.1.0",
-    "idgen": "~2.0.2"
+    "node-uuid": "^1.4.1",
+    "routes": "^1.2.0",
+    "idgen": "^2.0.2"
   }
 }

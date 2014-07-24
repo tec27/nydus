@@ -81,6 +81,9 @@ Socket.prototype._onMessage = function(data, flags) {
     case protocol.EVENT:
       this.emit('message:event', message)
       break
+    case protocl.REVOKE:
+      this.emit('message:revoke', message)
+      break
   }
 }
 
@@ -97,6 +100,16 @@ Socket.sendEventToAll = function(sockets, topicPath, event) {
   var message = { type: protocol.EVENT
                 , topicPath: topicPath
                 , event: event
+                }
+    , encoded = protocol.encode(message)
+  for (var i = 0, len = sockets.length; i < len; i++) {
+    sockets[i]._send(encoded)
+  }
+}
+
+Socket.sendRevokeToAll = function(sockets, topicPath) {
+  var message = { type: protocol.REVOKE
+                , topicPath: topicPath
                 }
     , encoded = protocol.encode(message)
   for (var i = 0, len = sockets.length; i < len; i++) {

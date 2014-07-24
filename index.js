@@ -62,6 +62,54 @@ NydusServer.prototype.publish = function(topicPath, event) {
   Socket.sendEventToAll(sockets, topicPath, event)
 }
 
+NydusServer.prototype.revoke = function(sockets, topicPath) {
+  if (!Array.isArray(sockets)) {
+    sockets = [ sockets ]
+  }
+
+  for (var i = 0, len = sockets.length; i < len; i++) {
+    var socket = sockets[i]
+      , sub = this._subscriptions[topicPath]
+      , socketSub = this._socketSubs[socket.id]
+    if (!sub || !sub[socket.id]) {
+      sockets.splice(i, 1)
+      i--
+      len--
+      continue
+    }
+
+    sub[socket.id] = 0
+    socketSub[topicPath] = 0
+    if (!sub[socket.id]) {
+      delete sub[socket.id]
+      delete socketSub[topicPath]
+    }
+  }
+  Socket.sendRevokeToAll(sockets, topicPath)
+}
+
+NydusServer.prototype.revokeAll = function(topicPath) {
+  var sub = this._subscriptions[topicPath]
+  if (!sub) {
+    return
+  }
+
+  var socketIds = Object.keys(sub) || {}
+  if (!socketIds.length) {
+    return
+  }
+  var sockets = new Array(socketIds.length)
+  for (var i = 0, len = socketIds.length; i < len; i++) {
+    var id = socketIds[i]
+      , socketSub = this._socketSubs[id]
+    sockets[i] = this._sockets[id]
+    socketSub[topicPath] = 0
+  }
+
+  delete this._subscriptions[topicPath]
+  Socket.sendRevokeToAll(sockets, topicPath)
+}
+
 NydusServer.prototype._onConnection = function(websocket) {
   var id = uuid.v4()
   var socket = new Socket(websocket, id)
