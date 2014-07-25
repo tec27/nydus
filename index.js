@@ -187,7 +187,7 @@ NydusServer.prototype._onCall = function(socket, message) {
   }
 
   var req = createReq(socket, message.requestId, route, message.procPath)
-    , res = createRes(this, socket, message.requestId, responseCallback)
+    , res = createRes(this, socket, message.requestId, true, responseCallback)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
@@ -204,7 +204,7 @@ NydusServer.prototype._onSubscribe = function(socket, message) {
   }
 
   var req = createReq(socket, message.requestId, route, message.topicPath)
-    , res = createRes(this, socket, message.requestId, responseCallback)
+    , res = createRes(this, socket, message.requestId, false, responseCallback)
     , args = [ req, res ].concat(message.params)
 
   route.fn.apply(this, args)
@@ -315,16 +315,16 @@ function createReq(socket, requestId, route, path) {
           }
 }
 
-function createRes(server, socket, requestId, cb) {
+function createRes(server, socket, requestId, allowResults, cb) {
   var sent = false
 
-  function complete(results) {
+  function complete() {
     if (sent) {
       server.emit('error', new Error('Only one response can be sent for a CALL.'))
       return
     }
     cb(false)
-    var args = Array.prototype.slice.apply(arguments)
+    var args = allowResults ? Array.prototype.slice.apply(arguments) : undefined
     socket.sendResult(requestId, args)
     sent = true
   }
