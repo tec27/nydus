@@ -1,7 +1,7 @@
 var EventEmitter = require('events').EventEmitter
   , util = require('util')
   , protocol = require('nydus-protocol')
-  , idgen = require('idgen')
+  , cuid = require('cuid')
 
 module.exports = Socket
 
@@ -163,7 +163,7 @@ Socket.prototype.sendError = function(requestId, errorCode, errorDesc, errorDeta
 
 Socket.prototype.call = function(procPath, params, cb) {
   var message = { type: protocol.CALL
-                , requestId: idgen(16)
+                , requestId: cuid.slug()
                 , procPath: procPath
                 }
     , callback = arguments.length > 1 ? arguments[arguments.length - 1] : function() {}
