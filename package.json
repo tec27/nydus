@@ -1,6 +1,6 @@
 {
   "name": "nydus",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "index.js",
   "scripts": {
@@ -27,7 +27,7 @@
     "cuid": "^1.2.4",
     "node-uuid": "^1.4.1",
     "nydus-protocol": "^0.2.0",
-    "routes": "^1.2.0",
-    "ws": "^0.4.31"
+    "routes": "^2.0.0",
+    "ws": "^0.7.1"
   }
 }
