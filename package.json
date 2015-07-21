@@ -3,8 +3,12 @@
   "version": "0.2.3",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "index.js",
+  "browser": "lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "autotest": "mocha --watch -R spec --compilers js:babel/register --recursive test/",
+    "lint": "eslint --ext .js ./",
+    "prepublish": "npm run lint && npm run test",
+    "test": "mocha -R spec --compilers js:babel/register --recursive test/"
   },
   "repository": {
     "type": "git",
@@ -24,10 +28,20 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "dependencies": {
-    "cuid": "^1.2.4",
-    "node-uuid": "^1.4.1",
-    "nydus-protocol": "^0.2.0",
-    "routes": "^2.0.0",
-    "ws": "^0.7.1"
+    "cuid": "^1.2.5",
+    "debug": "^2.2.0",
+    "engine.io": "^1.5.2",
+    "immutable": "^3.7.4"
+  },
+  "devDependencies": {
+    "babel": "^5.6.23",
+    "babel-core": "^5.7.4",
+    "babel-eslint": "^3.1.23",
+    "chai": "^3.2.0",
+    "chai-as-promised": "^5.1.0",
+    "engine.io-client": "^1.5.2",
+    "eslint": "^0.24.1",
+    "eslint-plugin-babel": "^1.1.0",
+    "mocha": "^2.2.5"
   }
 }

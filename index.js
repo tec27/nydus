@@ -1,343 +1,109 @@
-var ws = require('ws')
-  , protocol = require('nydus-protocol')
-  , EventEmitter = require('events').EventEmitter
-  , util = require('util')
-  , uuid = require('node-uuid')
-  , Socket = require('./socket')
-  , createRouter = require('./router')
-  , packageJson = require('./package.json')
+import eio from 'engine.io'
+import { EventEmitter } from 'events'
+import cuid from 'cuid'
+import { Map } from 'immutable'
+import {
+  encode,
+  decode,
+  protocolVersion,
+  WELCOME,
+  INVOKE,
+  PARSER_ERROR,
+} from './protocol'
 
-module.exports = function(httpServer, options) {
-  return new NydusServer(httpServer, options)
-}
+export { protocolVersion }
 
-NydusServer.defaults =  { serverAgent: 'NydusServer/' + packageJson.version
-                        , pingInterval: 25000
-                        , pingTimeout: 60000
-                        , authorize: null
-                        }
+export class NydusClient extends EventEmitter {
+  constructor(id, conn, idGen = cuid) {
+    super()
+    this.id = id
+    this.conn = conn
+    this._idGen = idGen
+    this._outstanding = Map()
 
-function NydusServer(httpServer, options) {
-  EventEmitter.call(this)
-  this._ws = new ws.Server({ server: httpServer })
-  this.router = createRouter()
-
-  this._sockets = Object.create(null)
-  this._subscriptions = Object.create(null)
-  this._socketSubs = Object.create(null)
-  this._pingTimeouts = Object.create(null)
-  this._pingIntervals = Object.create(null)
-
-  this._options = options || {}
-  for (var key in NydusServer.defaults) {
-    if (typeof this._options[key] == 'undefined') {
-      this._options[key] = NydusServer.defaults[key]
-    }
+    conn.on('error', err => this.emit('error', err))
+      .on('close', ::this._onClose)
+      .on('message', ::this._onMessage)
   }
 
-  ; [ '_onError'
-    , '_onConnection'
-    ].forEach(function(fn) {
-      this[fn] = this[fn].bind(this)
-    }, this)
-
-  this._ws.on('error', this._onError)
-    .on('connection', this._onConnection)
-
-  // construct a welcome message to save time, since it will never change
-  this._welcomeMessage = protocol.encode( { type: protocol.WELCOME
-                                          , serverAgent: this._options.serverAgent
-                                          })
-}
-util.inherits(NydusServer, EventEmitter)
-
-NydusServer.prototype.publish = function(topicPath, event) {
-  var socketIds = Object.keys(this._subscriptions[topicPath] || {})
-  if (!socketIds.length) {
-    return
-  }
-  var sockets = socketIds.map(function(id) {
-    return this._sockets[id]
-  }, this)
-  Socket.sendEventToAll(sockets, topicPath, event)
-}
-
-NydusServer.prototype.revoke = function(sockets, topicPath) {
-  if (!Array.isArray(sockets)) {
-    sockets = [ sockets ]
+  get readyState() {
+    return this.conn.readyState
   }
 
-  for (var i = 0, len = sockets.length; i < len; i++) {
-    var socket = sockets[i]
-      , sub = this._subscriptions[topicPath]
-      , socketSub = this._socketSubs[socket.id]
-    if (!sub || !sub[socket.id]) {
-      sockets.splice(i, 1)
-      i--
-      len--
-      continue
-    }
-
-    sub[socket.id] = 0
-    socketSub[topicPath] = 0
-    if (!sub[socket.id]) {
-      delete sub[socket.id]
-      delete socketSub[topicPath]
-    }
-  }
-  Socket.sendRevokeToAll(sockets, topicPath)
-}
-
-NydusServer.prototype.revokeAll = function(topicPath) {
-  var sub = this._subscriptions[topicPath]
-  if (!sub) {
-    return
+  // Closes the underlying connection
+  close() {
+    this.conn.close()
   }
 
-  var socketIds = Object.keys(sub) || {}
-  if (!socketIds.length) {
-    return
-  }
-  var sockets = new Array(socketIds.length)
-  for (var i = 0, len = socketIds.length; i < len; i++) {
-    var id = socketIds[i]
-      , socketSub = this._socketSubs[id]
-    sockets[i] = this._sockets[id]
-    socketSub[topicPath] = 0
-  }
-
-  delete this._subscriptions[topicPath]
-  Socket.sendRevokeToAll(sockets, topicPath)
-}
-
-NydusServer.prototype._onConnection = function(websocket) {
-  var id = uuid.v4()
-  var socket = new Socket(websocket, id)
-  this._sockets[id] = socket
-  this._socketSubs[id] = Object.create(null)
-
-  var self = this
-  socket.on('disconnect', function() {
-    delete self._sockets[id]
-    for (var topic in self._socketSubs[id]) {
-      delete self._subscriptions[topic][id]
-    }
-    delete self._socketSubs[id]
-
-    if (typeof self._pingTimeouts[id] != 'undefined') {
-      clearTimeout(self._pingTimeouts[id])
-      delete self._pingTimeouts[id]
-    }
-    if (typeof self._pingIntervals[id] != 'undefined') {
-      clearTimeout(self._pingIntervals[id])
-      delete self._pingIntervals[id]
-    }
-
-    self.emit('disconnect', socket)
-  }).on('error', function() {}) // swallow socket errors if no one else handles them
-
-  if (this._options.authorize) {
-    var req = websocket.upgradeReq
-      , info =  { origin: req.headers.origin
-                , secure: typeof req.connection.authorized != 'undefined' ||
-                    typeof req.connection.encrypted != 'undefined'
-                , req: req
-                }
-    this._options.authorize(info, function(authorized, handshakeData) {
-      if (authorized) {
-        if (handshakeData) {
-          socket.handshake = handshakeData
-        }
-        initialize()
-      } else {
-        socket.disconnect(4001, 'unauthorized')
-      }
+  // Invoke a remote method on a client. Path should be a proper URI-encoded path, data is optional
+  // and will be JSON encoded to send to the client. Returns a promise that will be resolved or
+  // rejected with the client's response
+  invoke(path, data) {
+    const id = this._idGen()
+    return new Promise((resolve, reject) => {
+      this._outstanding = this._outstanding.set(id, { resolve, reject })
+      this.conn.send(encode(INVOKE, data, id, path))
+    }).then(() => {
+      this._outstanding = this._outstanding.delete(id)
+    }, () => {
+      this._outstanding = this._outstanding.delete(id)
     })
-  } else {
-    initialize()
   }
 
-  function initialize() {
-    socket.on('message:call', function(message) {
-      self._onCall(socket, message)
-    }).on('message:subscribe', function(message) {
-      self._onSubscribe(socket, message)
-    }).on('message:unsubscribe', function(message) {
-      self._onUnsubscribe(socket, message)
-    }).on('message:publish', function(message) {
-      self._onPublish(socket, message)
-    })
-
-    self._startPingInterval(socket)
-
-    socket._send(self._welcomeMessage)
-    self.emit('connection', socket)
-  }
-}
-
-NydusServer.prototype._onError = function(err) {
-  this.emit('error', err)
-}
-
-NydusServer.prototype._onCall = function(socket, message) {
-  var route = this.router.matchCall(message.procPath)
-  if (!route) {
-    return socket.sendError(message.requestId, 404, 'not found',
-        { message: message.procPath + ' could not be found' })
-  }
-
-  var req = createReq(socket, message.requestId, route, message.procPath)
-    , res = createRes(this, socket, message.requestId, true, responseCallback)
-    , args = [ req, res ].concat(message.params)
-
-  route.fn.apply(this, args)
-
-  function responseCallback() {}
-}
-
-NydusServer.prototype._onSubscribe = function(socket, message) {
-  var self = this
-    , route = this.router.matchSubscribe(message.topicPath)
-  if (!route) {
-    return socket.sendError(message.requestId, 404, 'not found',
-        { message: message.topicPath + ' could not be found' })
-  }
-
-  var req = createReq(socket, message.requestId, route, message.topicPath)
-    , res = createRes(this, socket, message.requestId, false, responseCallback)
-    , args = [ req, res ].concat(message.params)
-
-  route.fn.apply(this, args)
-
-  function responseCallback(erred) {
-    if (erred) {
+  _onMessage(msg) {
+    const decoded = decode(msg)
+    if (decoded.type === PARSER_ERROR) {
+      this._onClose('parser error')
       return
     }
+  }
 
-    var sub = self._subscriptions[message.topicPath]
-      , socketSub = self._socketSubs[socket.id]
-    if (!sub) {
-      sub = self._subscriptions[message.topicPath] = Object.create(null)
+  _onClose(reason, description) {
+    for (const p of this._outstanding.values()) {
+      console.dir(p)
+      p.reject(new Error('Connection closed before response'))
     }
+    this._outstanding = this._outstanding.clear()
 
-    sub[socket.id] = (sub[socket.id] || 0) + 1
-    socketSub[message.topicPath] = (socketSub[message.topicPath] || 0) + 1
+    this.emit('close', reason, description)
   }
 }
 
-NydusServer.prototype._onUnsubscribe = function(socket, message) {
-  var self = this
-    , sub = self._subscriptions[message.topicPath]
-    , socketSub = self._socketSubs[socket.id]
-  if (!sub || !sub[socket.id]) {
-    socket.sendError(message.requestId, 400, 'bad request', 'no subscriptions exist for this topic')
-    return
+export class NydusServer extends EventEmitter {
+  constructor(options) {
+    super()
+    this.eioServer = eio(options)
+    this._idGen = cuid
+    this.clients = Map()
+
+    this.eioServer.on('error', err => this.emit('error', err))
+      .on('connection', ::this._onConnection)
   }
 
-  sub[socket.id]--
-  socketSub[message.topicPath]--
-  if (!sub[socket.id]) {
-    delete sub[socket.id]
-    delete socketSub[message.topicPath]
+  attach(httpServer, options) {
+    this.eioServer.attach(httpServer, options)
   }
 
-  socket.sendResult(message.requestId)
-}
-
-NydusServer.prototype._onPublish = function(socket, message) {
-  var self = this
-    , route = this.router.matchPublish(message.topicPath)
-  if (!route) {
-    return socket.sendError(message.requestId, 404, 'not found',
-        { message: message.topicPath + ' could not be found' })
+  // Set the function used to generate IDs for messages. Should return a string of 32 characters or
+  // less, matching /[A-z0-9-]+/.
+  //
+  // This is mainly useful for testing, generally this shouldn't need to be used.
+  setIdGen(idGenFunc) {
+    this._idGen = idGenFunc
   }
 
-  var req = createReq(socket, message.requestId, route, message.topicPath)
-    , args = [ req, message.event, complete ]
-
-  route.fn.apply(this, args)
-
-  function complete(event) {
-    var socketIds = Object.keys(self._subscriptions[message.topicPath] || {})
-    if (!socketIds.length) {
-      return
-    }
-    var sockets = socketIds.map(function(id) {
-      return self._sockets[id]
-    })
-
-    if (message.excludeMe) {
-      var index = sockets.indexOf(socket);
-      if (index != -1) {
-        sockets.splice(index, 1)
-      }
-    }
-
-    Socket.sendEventToAll(sockets, message.topicPath, event)
+  _onConnection(socket) {
+    const client = new NydusClient(cuid(), socket, this._idGen)
+    this.clients = this.clients.set(client.id, client)
+    socket.send(encode(WELCOME, protocolVersion))
+    this.emit('connection', client)
   }
 }
 
-NydusServer.prototype._sendPing = function(socket) {
-  delete this._pingIntervals[socket.id]
+NydusServer.protocolVersion = protocolVersion
 
-  var self = this
-  this._pingTimeouts[socket.id] = setTimeout(function() {
-    socket.terminate()
-  }, this._options.pingTimeout)
-
-  socket.call('/_/ping', function(err) {
-    if (err) {
-      socket.terminate()
-      return
-    }
-
-    clearTimeout(self._pingTimeouts[socket.id])
-    delete self._pingTimeouts[socket.id]
-
-    self._startPingInterval(socket)
-  })
-}
-
-NydusServer.prototype._startPingInterval = function(socket) {
-  var self = this
-  this._pingIntervals[socket.id] = setTimeout(function() {
-    self._sendPing(socket)
-  }, this._options.pingInterval)
-}
-
-function createReq(socket, requestId, route, path) {
-  return  { socket: socket
-          , requestId: requestId
-          , route: route.route
-          , params: route.params
-          , splats: route.splats
-          , path: path
-          }
-}
-
-function createRes(server, socket, requestId, allowResults, cb) {
-  var sent = false
-
-  function complete() {
-    if (sent) {
-      server.emit('error', new Error('Only one response can be sent for a CALL.'))
-      return
-    }
-    cb(false)
-    var args = allowResults ? Array.prototype.slice.apply(arguments) : undefined
-    socket.sendResult(requestId, args)
-    sent = true
-  }
-
-  function fail(errorCode, errorDesc, errorDetails) {
-    if (sent) {
-      server.emit('error', new Error('Only one response can be sent for a CALL.'))
-      return
-    }
-    cb(true)
-    socket.sendError(requestId, errorCode, errorDesc, errorDetails)
-    sent = true
-  }
-
-  return { complete: complete, fail: fail }
+export default function createNydusServer(httpServer, ...args) {
+  const nydus = new NydusServer(...args)
+  nydus.attach(httpServer, ...args)
+  return nydus
 }
