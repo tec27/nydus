@@ -8,6 +8,8 @@ import {
   protocolVersion,
   WELCOME,
   INVOKE,
+  RESULT,
+  ERROR,
   PARSER_ERROR,
 } from './protocol'
 
@@ -40,32 +42,63 @@ export class NydusClient extends EventEmitter {
   // rejected with the client's response
   invoke(path, data) {
     const id = this._idGen()
-    return new Promise((resolve, reject) => {
+    const result = new Promise((resolve, reject) => {
       this._outstanding = this._outstanding.set(id, { resolve, reject })
       this.conn.send(encode(INVOKE, data, id, path))
-    }).then(() => {
+    })
+
+    result.then(() => {
       this._outstanding = this._outstanding.delete(id)
     }, () => {
       this._outstanding = this._outstanding.delete(id)
     })
+
+    return result
   }
 
   _onMessage(msg) {
     const decoded = decode(msg)
-    if (decoded.type === PARSER_ERROR) {
-      this._onClose('parser error')
-      return
+    switch (decoded.type) {
+      case PARSER_ERROR:
+        this.conn.close() // will cause a call to onClose
+        break
+      case RESULT:
+        this._onResult(decoded)
+        break
+      case ERROR:
+        this._onErrorResult(decoded)
+        break
     }
   }
 
   _onClose(reason, description) {
     for (const p of this._outstanding.values()) {
-      console.dir(p)
       p.reject(new Error('Connection closed before response'))
     }
     this._outstanding = this._outstanding.clear()
-
     this.emit('close', reason, description)
+  }
+
+  _getOutstandingOrClose(id) {
+    const promise = this._outstanding.get(id)
+    if (!promise) {
+      this.conn.close()
+    }
+    return promise
+  }
+
+  _onResult({ id, data }) {
+    const promise = this._getOutstandingOrClose(id)
+    if (promise) {
+      promise.resolve(data)
+    }
+  }
+
+  _onErrorResult({ id, data }) {
+    const promise = this._getOutstandingOrClose(id)
+    if (promise) {
+      promise.reject(data)
+    }
   }
 }
 
@@ -80,8 +113,18 @@ export class NydusServer extends EventEmitter {
       .on('connection', ::this._onConnection)
   }
 
+  // Attach this NydusServer to a particular HTTP(S) server, making it listen to UPGRADE requests.
   attach(httpServer, options) {
     this.eioServer.attach(httpServer, options)
+  }
+
+  // Close any open connections and then stop this Nydus server.
+  close() {
+    for (const client of this.clients.values()) {
+      client.close()
+    }
+    this.clients = this.clients.clear()
+    this.eioServer.close()
   }
 
   // Set the function used to generate IDs for messages. Should return a string of 32 characters or

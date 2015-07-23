@@ -1,9 +1,12 @@
-import { expect } from 'chai'
+import chai, { expect } from 'chai'
+import chaiAsPromised from 'chai-as-promised'
 import http from 'http'
 import eio from 'engine.io-client'
-import { decode, WELCOME, INVOKE } from '../protocol'
+import { decode, encode, WELCOME, INVOKE, ERROR, RESULT } from '../protocol'
 
 import nydus, { NydusServer } from '../'
+
+chai.use(chaiAsPromised)
 
 function packet({ type, id, path, data }) {
   return { type, id, path, data }
@@ -45,6 +48,7 @@ describe('nydus(httpServer)', () => {
     if (client) {
       client.close()
     }
+    n.close()
     server.close()
   })
 
@@ -93,5 +97,47 @@ describe('nydus(httpServer)', () => {
     })
 
     n.on('connection', c => c.invoke('/hello', 'hi'))
+  })
+
+  it('should reject promises on error responses', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+
+      const id = decode(msg).id
+      client.send(encode(ERROR, { code: 418, message: 'I am a teapot' }, id))
+    })
+
+    n.on('connection', c => {
+      const p = c.invoke('/hello', 'hi')
+      expect(p).to.eventually.be.rejectedWith({ code: 418, message: 'I am a teapot' })
+        .and.notify(done)
+    })
+  })
+
+  it('should resolve promises on success responses', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+
+      const id = decode(msg).id
+      client.send(encode(RESULT, { message: 'sup' }, id))
+    })
+
+    n.on('connection', c => {
+      const p = c.invoke('/hello', 'hi')
+      expect(p).to.eventually.eql({ message: 'sup' }).and.notify(done)
+    })
+  })
+
+  it('should close client connection on response to unknown request ID', done => {
+    connectClient()
+    client.once('message', () => {
+      client.send(encode(RESULT, 'boo', 27))
+    }).on('close', function() {
+      done()
+    })
   })
 })

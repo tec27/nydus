@@ -5,8 +5,10 @@ export const protocolVersion = 3
 
 export const WELCOME = 0
 export const INVOKE = 1
+export const RESULT = 2
+export const ERROR = 3
 
-const LAST_TYPE = INVOKE
+const LAST_TYPE = ERROR
 
 export const PARSER_ERROR = 11
 const parserError = { type: PARSER_ERROR }
@@ -18,7 +20,7 @@ export function encode(type, data, id = null, path = null) {
     output += '$' + id
   }
   if (path != null) {
-    output += '~' + path
+    output += '~' + encodeURI(path)
   }
   if (data === undefined) {
     output += '|'
@@ -44,6 +46,26 @@ function validate(type, id, path, data) {
     case INVOKE:
       if (id == null || path == null) {
         debug('invalid INVOKE message, id and path required')
+        return parserError
+      }
+      break
+    case RESULT:
+      if (id == null) {
+        debug('invalid RESULT message, id is required')
+        return parserError
+      }
+      if (path != null) {
+        debug('invalid RESULT message, path is not allowed')
+        return parserError
+      }
+      break
+    case ERROR:
+      if (id == null) {
+        debug('invalid RESULT message, id is required')
+        return parserError
+      }
+      if (path != null) {
+        debug('invalid RESULT message, path is not allowed')
         return parserError
       }
       break
