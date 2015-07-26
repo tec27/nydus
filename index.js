@@ -210,7 +210,7 @@ export class NydusServer extends EventEmitter {
 
     route.action(initData).then(result => {
       client._send(encode(RESULT, result, msg.id))
-    }, err => {
+    }).catch(err => {
       const status = err.status || 500
       const message = err.message || STATUS_CODES[status]
       const body = err.body
