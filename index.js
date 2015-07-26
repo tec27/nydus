@@ -1,7 +1,7 @@
 import eio from 'engine.io'
 import { EventEmitter } from 'events'
 import cuid from 'cuid'
-import { Map } from 'immutable'
+import { Map, Set } from 'immutable'
 import {
   encode,
   decode,
@@ -10,6 +10,7 @@ import {
   INVOKE,
   RESULT,
   ERROR,
+  PUBLISH,
   PARSER_ERROR,
 } from './protocol'
 
@@ -21,6 +22,7 @@ export class NydusClient extends EventEmitter {
     this.id = id
     this.conn = conn
     this._idGen = idGen
+    this._subscriptions = Set()
     this._outstanding = Map()
 
     conn.on('error', err => this.emit('error', err))
@@ -30,6 +32,11 @@ export class NydusClient extends EventEmitter {
 
   get readyState() {
     return this.conn.readyState
+  }
+
+  valueOf() {
+    // This will make things slightly easier for ImmutableJS (otherwise it'd use a WeakMap)
+    return this.id
   }
 
   // Closes the underlying connection
@@ -54,6 +61,10 @@ export class NydusClient extends EventEmitter {
     })
 
     return result
+  }
+
+  _send(encoded) {
+    this.conn.send(encoded)
   }
 
   _onMessage(msg) {
@@ -108,6 +119,7 @@ export class NydusServer extends EventEmitter {
     this.eioServer = eio(options)
     this._idGen = cuid
     this.clients = Map()
+    this._subscriptions = Map()
 
     this.eioServer.on('error', err => this.emit('error', err))
       .on('connection', ::this._onConnection)
@@ -133,6 +145,56 @@ export class NydusServer extends EventEmitter {
   // This is mainly useful for testing, generally this shouldn't need to be used.
   setIdGen(idGenFunc) {
     this._idGen = idGenFunc
+  }
+
+  // Add a subscription to a publish path for a client. Whenever messages are published to that
+  // path, this client will receive a message (until unsubscribed). If initialData is specified and
+  // the client was not previously subscribed, this data will be published to the client
+  // immediately (but not to the other subscribed clients).
+  subscribeClient(client, path, initialData = null) {
+    const newSubs = this._subscriptions.update(path, Set(), s => s.add(client))
+    if (newSubs === this._subscriptions) {
+      return // client was previously subscribed
+    }
+    this._subscriptions = newSubs
+    client._subscriptions = client._subscriptions.add(path)
+    if (initialData != null) {
+      client._send(encode(PUBLISH, initialData, null, path))
+    }
+  }
+
+  // Remove a client's subsription to a path (if it was subscribed).
+  unsubscribeClient(client, path) {
+    const newSubs = this._subscriptions.update(path, s => s && s.delete(client))
+    if (newSubs === this._subscriptions) {
+      return false // client wasn't subscribed before
+    }
+    this._subscriptions = newSubs
+    client._subscriptions = client._subscriptions.delete(path)
+    return true
+  }
+
+  unsubscribeAll(path) {
+    const subs = this._subscriptions.get(path)
+    if (!subs) {
+      return false
+    }
+
+    for (const c of subs.values()) {
+      c._subscriptions = c._subscriptions.delete(path)
+    }
+    this._subscriptions = this._subscriptions.delete(path)
+    return true
+  }
+
+  publish(path, data) {
+    const subs = this._subscriptions.get(path)
+    if (!subs) return
+
+    const packet = encode(PUBLISH, data, null, path)
+    for (const c of subs.values()) {
+      c._send(packet)
+    }
   }
 
   _onConnection(socket) {

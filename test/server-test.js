@@ -2,7 +2,7 @@ import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import http from 'http'
 import eio from 'engine.io-client'
-import { decode, encode, WELCOME, INVOKE, ERROR, RESULT } from '../protocol'
+import { decode, encode, WELCOME, INVOKE, ERROR, RESULT, PUBLISH } from '../protocol'
 
 import nydus, { NydusServer } from '../'
 
@@ -138,6 +138,98 @@ describe('nydus(httpServer)', () => {
       client.send(encode(RESULT, 'boo', 27))
     }).on('close', function() {
       done()
+    })
+  })
+
+  it('should publish to subscribed clients', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+
+      expect(decode(msg)).to.eql(packet({ type: PUBLISH, data: 'hi', path: '/hello' }))
+      done()
+    })
+
+    n.on('connection', c => {
+      n.subscribeClient(c, '/hello')
+      n.publish('/hello', 'hi')
+    })
+  })
+
+  it('should support subscribing clients and pushing initial data', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+      done(new Error('first client shouldn\'t have received another message'))
+    })
+    connectClient()
+    let j = 0
+    client.on('message', msg => {
+      if (j++ < 1) return
+
+      expect(decode(msg)).to.eql(packet({ type: PUBLISH, data: 'hi', path: '/hello' }))
+      done()
+    })
+
+    let cNum = 0
+    n.on('connection', c => {
+      if (cNum++ < 1) n.subscribeClient(c, '/hello')
+      else n.subscribeClient(c, '/hello', 'hi')
+    })
+  })
+
+  it('should allow unsubscribing individual clients', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+      done(new Error('client shouldn\'t have received a message'))
+    })
+
+    n.on('connection', c => {
+      n.subscribeClient(c, '/hello')
+      let result = n.unsubscribeClient(c, '/hello')
+      expect(result).to.be.true
+      result = n.unsubscribeClient(c, '/hello')
+      expect(result).to.be.false
+      n.publish('/hello', 'hi')
+      setTimeout(() => done(), 30)
+    })
+  })
+
+  it('should allow unsubscribing all clients from a path', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ < 1) return
+      done(new Error('client shouldn\'t have received a message'))
+    })
+
+    connectClient()
+    let j = 0
+    client.on('message', msg => {
+      if (j++ < 1) return
+      done(new Error('client shouldn\'t have received a message'))
+    })
+
+    let numClients = 0
+    n.on('connection', c => {
+      numClients++
+      n.subscribeClient(c, '/hello')
+
+      if (numClients === 2) {
+        let result = n.unsubscribeAll('/hello')
+        expect(result).to.be.true
+        result = n.unsubscribeAll('/hello')
+        expect(result).to.be.false
+        result = n.unsubscribeClient(c, '/hello')
+        expect(result).to.be.false
+
+        n.publish('/hello', 'hi')
+        setTimeout(() => done(), 30)
+      }
     })
   })
 })

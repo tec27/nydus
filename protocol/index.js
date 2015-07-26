@@ -7,8 +7,9 @@ export const WELCOME = 0
 export const INVOKE = 1
 export const RESULT = 2
 export const ERROR = 3
+export const PUBLISH = 4
 
-const LAST_TYPE = ERROR
+const LAST_TYPE = PUBLISH
 
 export const PARSER_ERROR = 11
 const parserError = { type: PARSER_ERROR }
@@ -66,6 +67,16 @@ function validate(type, id, path, data) {
       }
       if (path != null) {
         debug('invalid RESULT message, path is not allowed')
+        return parserError
+      }
+      break
+    case PUBLISH:
+      if (id != null) {
+        debug('invalid PUBLISH message, id is not allowed')
+        return parserError
+      }
+      if (path == null) {
+        debug('invalid PUBLISH message, path is required')
         return parserError
       }
       break
