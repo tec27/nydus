@@ -85,6 +85,15 @@ function validate(type, id, path, data) {
   return { type, id, path, data }
 }
 
+const JSON_ERROR = {}
+function tryParse(str) {
+  try {
+    return JSON.parse(str)
+  } catch (err) {
+    return JSON_ERROR
+  }
+}
+
 export function decode(str) {
   if (str.length < 2) {
     debug('invalid nydus message, too short')
@@ -148,9 +157,8 @@ export function decode(str) {
     return parserError
   }
   if (i < len) {
-    try {
-      data = JSON.parse(str.slice(i))
-    } catch (err) {
+    data = tryParse(str.slice(i))
+    if (data === JSON_ERROR) {
       debug('invalid nydus message, invalid JSON')
       return parserError
     }
