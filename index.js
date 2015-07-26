@@ -20,14 +20,14 @@ import {
 export { protocolVersion }
 
 export class NydusClient extends EventEmitter {
-  constructor(id, conn, onInvoke, idGen = cuid) {
+  constructor(id, conn, onInvoke, onClose, idGen = cuid) {
     super()
     this.id = id
     this.conn = conn
     this._onInvoke = onInvoke
+    this._onCloseFunc = onClose
     this._idGen = idGen
     this._subscriptions = Set()
-    this._outstanding = Map()
 
     conn.on('error', err => this.emit('error', err))
       .on('close', ::this._onClose)
@@ -48,25 +48,6 @@ export class NydusClient extends EventEmitter {
     this.conn.close()
   }
 
-  // Invoke a remote method on a client. Path should be a proper URI-encoded path, data is optional
-  // and will be JSON encoded to send to the client. Returns a promise that will be resolved or
-  // rejected with the client's response
-  invoke(path, data) {
-    const id = this._idGen()
-    const result = new Promise((resolve, reject) => {
-      this._outstanding = this._outstanding.set(id, { resolve, reject })
-      this.conn.send(encode(INVOKE, data, id, path))
-    })
-
-    result.then(() => {
-      this._outstanding = this._outstanding.delete(id)
-    }, () => {
-      this._outstanding = this._outstanding.delete(id)
-    })
-
-    return result
-  }
-
   _send(encoded) {
     this.conn.send(encoded)
   }
@@ -80,43 +61,12 @@ export class NydusClient extends EventEmitter {
       case INVOKE:
         this._onInvoke(this, decoded)
         break
-      case RESULT:
-        this._onResult(decoded)
-        break
-      case ERROR:
-        this._onErrorResult(decoded)
-        break
     }
   }
 
   _onClose(reason, description) {
-    for (const p of this._outstanding.values()) {
-      p.reject(new Error('Connection closed before response'))
-    }
-    this._outstanding = this._outstanding.clear()
+    this._onCloseFunc(this)
     this.emit('close', reason, description)
-  }
-
-  _getOutstandingOrClose(id) {
-    const promise = this._outstanding.get(id)
-    if (!promise) {
-      this.conn.close()
-    }
-    return promise
-  }
-
-  _onResult({ id, data }) {
-    const promise = this._getOutstandingOrClose(id)
-    if (promise) {
-      promise.resolve(data)
-    }
-  }
-
-  _onErrorResult({ id, data }) {
-    const promise = this._getOutstandingOrClose(id)
-    if (promise) {
-      promise.reject(data)
-    }
   }
 }
 
@@ -131,6 +81,7 @@ export class NydusServer extends EventEmitter {
     this._subscriptions = Map()
     this._router = ruta()
     this._onInvokeFunc = ::this._onInvoke
+    this._onCloseFunc = ::this._onDisconnect
 
     this.eioServer.on('error', err => this.emit('error', err))
       .on('connection', ::this._onConnection)
@@ -228,10 +179,18 @@ export class NydusServer extends EventEmitter {
   }
 
   _onConnection(socket) {
-    const client = new NydusClient(cuid(), socket, this._onInvokeFunc, this._idGen)
+    const client =
+        new NydusClient(cuid(), socket, this._onInvokeFunc, this._onCloseFunc, this._idGen)
     this.clients = this.clients.set(client.id, client)
     socket.send(encode(WELCOME, protocolVersion))
     this.emit('connection', client)
+  }
+
+  _onDisconnect(client) {
+    const subs = client._subscriptions
+    for (const path of subs.values()) {
+      this._subscriptions = this._subscriptions.update(path, s => s.delete(client))
+    }
   }
 
   _onInvoke(client, msg) {

@@ -86,61 +86,6 @@ describe('nydus(httpServer)', () => {
     connectClient()
   })
 
-  it('should send invokes to clients', done => {
-    connectClient()
-    let i = 0
-    client.on('message', msg => {
-      if (i++ < 1) return
-
-      expect(decode(msg)).to.eql(packet({ type: INVOKE, data: 'hi', id: idGen(), path: '/hello' }))
-      done()
-    })
-
-    n.on('connection', c => c.invoke('/hello', 'hi'))
-  })
-
-  it('should reject promises on error responses', done => {
-    connectClient()
-    let i = 0
-    client.on('message', msg => {
-      if (i++ < 1) return
-
-      const id = decode(msg).id
-      client.send(encode(ERROR, { code: 418, message: 'I am a teapot' }, id))
-    })
-
-    n.on('connection', c => {
-      const p = c.invoke('/hello', 'hi')
-      expect(p).to.eventually.be.rejectedWith({ code: 418, message: 'I am a teapot' })
-        .and.notify(done)
-    })
-  })
-
-  it('should resolve promises on success responses', done => {
-    connectClient()
-    let i = 0
-    client.on('message', msg => {
-      if (i++ < 1) return
-
-      const id = decode(msg).id
-      client.send(encode(RESULT, { message: 'sup' }, id))
-    })
-
-    n.on('connection', c => {
-      const p = c.invoke('/hello', 'hi')
-      expect(p).to.eventually.eql({ message: 'sup' }).and.notify(done)
-    })
-  })
-
-  it('should close client connection on response to unknown request ID', done => {
-    connectClient()
-    client.once('message', () => {
-      client.send(encode(RESULT, 'boo', 27))
-    }).on('close', function() {
-      done()
-    })
-  })
-
   it('should publish to subscribed clients', done => {
     connectClient()
     let i = 0
