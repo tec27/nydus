@@ -1,7 +1,10 @@
 import eio from 'engine.io'
+import { STATUS_CODES } from 'http'
 import { EventEmitter } from 'events'
 import cuid from 'cuid'
-import { Map, Set } from 'immutable'
+import { fromJS, Map, Set } from 'immutable'
+import ruta from 'ruta3'
+import compose from './composer'
 import {
   encode,
   decode,
@@ -17,10 +20,11 @@ import {
 export { protocolVersion }
 
 export class NydusClient extends EventEmitter {
-  constructor(id, conn, idGen = cuid) {
+  constructor(id, conn, onInvoke, idGen = cuid) {
     super()
     this.id = id
     this.conn = conn
+    this._onInvoke = onInvoke
     this._idGen = idGen
     this._subscriptions = Set()
     this._outstanding = Map()
@@ -73,6 +77,9 @@ export class NydusClient extends EventEmitter {
       case PARSER_ERROR:
         this.conn.close() // will cause a call to onClose
         break
+      case INVOKE:
+        this._onInvoke(this, decoded)
+        break
       case RESULT:
         this._onResult(decoded)
         break
@@ -113,6 +120,8 @@ export class NydusClient extends EventEmitter {
   }
 }
 
+const NOT_FOUND = { status: 404, message: 'Not Found' }
+
 export class NydusServer extends EventEmitter {
   constructor(options) {
     super()
@@ -120,6 +129,8 @@ export class NydusServer extends EventEmitter {
     this._idGen = cuid
     this.clients = Map()
     this._subscriptions = Map()
+    this._router = ruta()
+    this._onInvokeFunc = ::this._onInvoke
 
     this.eioServer.on('error', err => this.emit('error', err))
       .on('connection', ::this._onConnection)
@@ -145,6 +156,25 @@ export class NydusServer extends EventEmitter {
   // This is mainly useful for testing, generally this shouldn't need to be used.
   setIdGen(idGenFunc) {
     this._idGen = idGenFunc
+  }
+
+  // Registers one or more handlers to respond to INVOKEs on paths matching a pattern. Handlers are
+  // ES7 async functions (and thus return promises when called) of the form:
+  // async function(data, next)
+  //
+  // Handlers will be composed in order, and are expected to call next(data, next) to make execution
+  // continue further down the chain. Data is an immutable map that can be changed before passing it
+  // to the next function, but should present the same API (or ideally, be an ImmutableJS map) for
+  // compatibility with other handlers.
+  //
+  // The final resolved value will be sent to the client (as a RESULT if the promise was
+  // successfully resolved, an ERROR if it was rejected).
+  registerRoute(pathPattern, ...handlers) {
+    if (!handlers.length) {
+      throw new Error('At least one handler function is required')
+    }
+
+    this._router.addRoute(pathPattern, compose(handlers))
   }
 
   // Add a subscription to a publish path for a client. Whenever messages are published to that
@@ -198,10 +228,35 @@ export class NydusServer extends EventEmitter {
   }
 
   _onConnection(socket) {
-    const client = new NydusClient(cuid(), socket, this._idGen)
+    const client = new NydusClient(cuid(), socket, this._onInvokeFunc, this._idGen)
     this.clients = this.clients.set(client.id, client)
     socket.send(encode(WELCOME, protocolVersion))
     this.emit('connection', client)
+  }
+
+  _onInvoke(client, msg) {
+    const route = this._router.match(msg.path)
+    if (!route) {
+      client._send(encode(ERROR, NOT_FOUND, msg.id))
+      return
+    }
+
+    const initData = Map({
+      server: this,
+      client,
+      path: route.route,
+      params: fromJS(route.params),
+      splats: fromJS(route.splats),
+    })
+
+    route.action(initData).then(result => {
+      client._send(encode(RESULT, result, msg.id))
+    }, err => {
+      const status = err.status || 500
+      const message = err.message || STATUS_CODES[status]
+      const body = err.body
+      client._send(encode(ERROR, { status, message, body }, msg.id))
+    })
   }
 }
 

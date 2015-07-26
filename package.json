@@ -31,7 +31,8 @@
     "cuid": "^1.2.5",
     "debug": "^2.2.0",
     "engine.io": "^1.5.2",
-    "immutable": "^3.7.4"
+    "immutable": "^3.7.4",
+    "ruta3": "^2.0.0"
   },
   "devDependencies": {
     "babel": "^5.6.23",

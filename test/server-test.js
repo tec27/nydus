@@ -232,4 +232,125 @@ describe('nydus(httpServer)', () => {
       }
     })
   })
+
+  it('should accept invokes from clients on registered routes', done => {
+    n.registerRoute('/hello', async (data, next) => {
+      return 'hi'
+    })
+
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ === 0) {
+        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+      } else {
+        expect(decode(msg)).to.be.eql(packet({ type: RESULT, data: 'hi', id: '27' }))
+        done()
+      }
+    })
+  })
+
+  it('should send an error when a client invokes on an unregistered path', done => {
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ === 0) {
+        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+      } else {
+        expect(decode(msg)).to.be.eql(packet({
+          type: ERROR,
+          data: { status: 404, message: 'Not Found' },
+          id: '27'
+        }))
+        done()
+      }
+    })
+  })
+
+  it('should send back errors when invoke handlers cause a rejection', done => {
+    n.registerRoute('/hello', async (data, next) => {
+      const err = new Error('Custom Error')
+      err.status = 527
+      throw err
+    })
+
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ === 0) {
+        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+      } else {
+        expect(decode(msg)).to.be.eql(packet({
+          type: ERROR,
+          data: { status: 527, message: 'Custom Error' },
+          id: '27'
+        }))
+        done()
+      }
+    })
+  })
+
+  it('should send back a 500 if no status is set on invoke rejections', done => {
+    n.registerRoute('/hello', async (data, next) => {
+      const err = new Error('Omg error')
+      throw err
+    })
+
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ === 0) {
+        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+      } else {
+        expect(decode(msg)).to.be.eql(packet({
+          type: ERROR,
+          data: { status: 500, message: 'Omg error' },
+          id: '27'
+        }))
+        done()
+      }
+    })
+  })
+
+  it('should allow sending bodies along with invoke rejections', done => {
+    n.registerRoute('/hello', async (data, next) => {
+      const err = new Error('Big error')
+      err.status = 527
+      err.body = { hello: 'world' }
+      throw err
+    })
+
+    connectClient()
+    let i = 0
+    client.on('message', msg => {
+      if (i++ === 0) {
+        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+      } else {
+        expect(decode(msg)).to.be.eql(packet({
+          type: ERROR,
+          data: { status: 527, message: 'Big error', body: { hello: 'world' } },
+          id: '27'
+        }))
+        done()
+      }
+    })
+  })
+
+  it('should provide params and splats to router handlers', done => {
+    n.registerRoute('/hello/:who/*', async data => {
+      try {
+        expect(data.get('params').get('who')).to.be.eql('me')
+        expect(data.get('splats').toArray()).to.be.eql(['whatever'])
+      } catch (err) {
+        done(err)
+        throw err
+      }
+      done()
+    })
+
+    connectClient()
+    client.once('message', msg => {
+      client.send(encode(INVOKE, 'hi', '27', '/hello/me/whatever'))
+    })
+  })
 })
