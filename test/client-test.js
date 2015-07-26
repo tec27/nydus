@@ -76,16 +76,28 @@ describe('client', () => {
     expect(response).to.be.eql('hi')
   })
 
-  it('should support errors from INVOKE', async() => {
+  it('should support errors from INVOKE', async () => {
     const c = await connectClient()
 
-    let result
     try {
       await c.invoke('/errorMe')
-      result = 'where\'s my exception?'
+      return Promise.reject(new Error('should have thrown'))
     } catch (err) {
-      result = err
+      expect(err).to.be.an.instanceOf(Error)
+      expect(err.status).to.be.eql(420)
+      expect(err.message).to.be.eql('Ya done goofed')
     }
-    expect(result).to.be.eql({ status: 420, message: 'Ya done goofed' })
+
+  })
+
+  it('should fail INVOKEs that happen while not connected', async () => {
+    const c = client('ws://localhost:' + port)
+    try {
+      await c.invoke('/hello')
+      return Promise.reject(new Error('should have thrown'))
+    } catch (err) {
+      expect(err).to.be.an.instanceOf(Error)
+      expect(err.message).to.be.eql('Not connected')
+    }
   })
 })

@@ -57,6 +57,16 @@ export class NydusClient extends EventEmitter {
 
       this._outstanding = this._outstanding.set(id, { resolve, reject })
       this.conn.send(encode(INVOKE, data, id, path))
+    }).catch(err => {
+      // Convert error-like objects back to Errors
+      if (err.message && err.status) {
+        const converted = new Error(err.message)
+        converted.status = err.status
+        converted.body = err.body
+        throw converted
+      }
+
+      throw err
     })
 
     p.then(() => this._outstanding = this._outstanding.delete(id),
