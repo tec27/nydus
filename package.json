@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "dependencies": {
+    "backo": "^1.1.0",
     "cuid": "^1.2.5",
     "debug": "^2.2.0",
     "engine.io": "^1.5.2",

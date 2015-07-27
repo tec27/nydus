@@ -21,6 +21,7 @@ describe('client', () => {
   let httpServer
   let nydusServer
   let port
+  const clients = []
 
   beforeEach(async () => {
     httpServer = http.createServer()
@@ -37,16 +38,24 @@ describe('client', () => {
   })
 
   afterEach(() => {
+    for (const c of clients) {
+      c.disconnect()
+    }
     nydusServer.close()
     httpServer.close()
   })
 
   async function connectClient(fn) {
-    const c = client('ws://localhost:' + port)
+    const c = client('ws://localhost:' + port, {
+      reconnectionDelay: 1,
+      reconnectionJitter: 0,
+      connectTimeout: 30,
+    })
+    clients.push(c)
     if (fn) fn(c)
     const p = new Promise((resolve, reject) => {
       c.once('connect', () => resolve(c))
-        .once('error', () => reject(c))
+        .once('error', err => reject(err))
     })
     c.connect()
     return await p
@@ -87,7 +96,6 @@ describe('client', () => {
       expect(err.status).to.be.eql(420)
       expect(err.message).to.be.eql('Ya done goofed')
     }
-
   })
 
   it('should fail INVOKEs that happen while not connected', async () => {
@@ -99,5 +107,59 @@ describe('client', () => {
       expect(err).to.be.an.instanceOf(Error)
       expect(err.message).to.be.eql('Not connected')
     }
+  })
+
+  it('should support registering for PUBLISHes', async () => {
+    nydusServer.on('connection', sC => {
+      nydusServer.subscribeClient(sC, '/publishes/whoever/splatsplatsplat')
+    })
+
+    const c = await connectClient()
+    const p = new Promise((resolve, reject) => {
+      c.registerRoute('/publishes/:name/*', (route, data) => resolve({ route, data }))
+    })
+
+    nydusServer.publish('/publishes/whoever/splatsplatsplat', { awesome: true })
+    const { route, data } = await p
+
+    expect(route).to.be.eql({
+      route: '/publishes/:name/*',
+      params: { name: 'whoever' },
+      splats: [ 'splatsplatsplat' ],
+    })
+    expect(data).to.be.eql({ awesome: true })
+  })
+
+  it('should emit \'unhandled\' events when a PUBLISH goes unhandled', async () => {
+    nydusServer.on('connection', sC => {
+      nydusServer.subscribeClient(sC, '/publishes/whoever/splatsplatsplat')
+    })
+    const c = await connectClient()
+    const p = new Promise((resolve, reject) => {
+      c.once('unhandled', unhandled => resolve(unhandled))
+    })
+
+    nydusServer.publish('/publishes/whoever/splatsplatsplat', { awesome: false })
+    const { path, data } = await p
+
+    expect(path).to.be.eql('/publishes/whoever/splatsplatsplat')
+    expect(data).to.be.eql({ awesome: false })
+  })
+
+  it('should attempt reconnects on failed connections', async () => {
+    const c = await connectClient()
+    const p = new Promise((resolve, reject) => {
+      c.once('reconnecting', attempt => resolve(attempt))
+    })
+
+    const p2 = p.then(attempt1 => new Promise(resolve => {
+      c.once('reconnecting', attempt2 => resolve([ attempt1, attempt2 ]))
+    }))
+
+    nydusServer.close()
+    httpServer.close()
+    const attempts = await p2
+
+    expect(attempts).to.be.eql([ 1, 2 ])
   })
 })
