@@ -3,7 +3,6 @@
   "version": "0.2.3",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "index.js",
-  "browser": "lib/index.js",
   "scripts": {
     "autotest": "mocha --watch -R spec --compilers js:babel/register --recursive test/",
     "lint": "eslint --ext .js ./",
@@ -34,6 +33,7 @@
     "engine.io": "^1.5.2",
     "engine.io-client": "^1.5.2",
     "immutable": "^3.7.4",
+    "nydus-protocol": "^0.3.0",
     "ruta3": "^2.0.0"
   },
   "devDependencies": {

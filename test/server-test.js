@@ -2,7 +2,7 @@ import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import http from 'http'
 import eio from 'engine.io-client'
-import { decode, encode, WELCOME, INVOKE, ERROR, RESULT, PUBLISH } from '../protocol'
+import { decode, encode, WELCOME, INVOKE, ERROR, RESULT, PUBLISH } from 'nydus-protocol'
 
 import nydus, { NydusServer } from '../'
 

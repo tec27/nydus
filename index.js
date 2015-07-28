@@ -15,7 +15,7 @@ import {
   ERROR,
   PUBLISH,
   PARSER_ERROR,
-} from './protocol'
+} from 'nydus-protocol'
 
 export { protocolVersion }
 
