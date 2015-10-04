@@ -2,11 +2,13 @@
   "name": "nydus",
   "version": "0.3.0",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "autotest": "mocha --watch -R spec --compilers js:babel/register --recursive test/",
+    "build": "babel --out-dir lib/ *.js",
+    "clean": "rimraf lib",
     "lint": "eslint --ext .js ./",
-    "prepublish": "npm run lint && npm run test",
+    "prepublish": "npm run lint && npm run test && npm run clean && npm run build",
     "test": "mocha -R spec --compilers js:babel/register --recursive test/"
   },
   "repository": {
@@ -45,6 +47,7 @@
     "eslint": "^1.6.0",
     "eslint-plugin-babel": "^2.1.1",
     "mocha": "^2.2.5",
-    "nydus-client": "^0.3.0"
+    "nydus-client": "^0.3.0",
+    "rimraf": "^2.4.3"
   }
 }
