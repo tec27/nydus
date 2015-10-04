@@ -31,7 +31,6 @@
     "cuid": "^1.2.5",
     "debug": "^2.2.0",
     "engine.io": "^1.5.2",
-    "engine.io-client": "^1.5.2",
     "immutable": "^3.7.4",
     "nydus-protocol": "^0.3.1",
     "ruta3": "^2.0.0"
@@ -43,7 +42,7 @@
     "chai": "^3.2.0",
     "chai-as-promised": "^5.1.0",
     "engine.io-client": "^1.5.2",
-    "eslint": "^0.24.1",
+    "eslint": "^1.6.0",
     "eslint-plugin-babel": "^1.1.0",
     "mocha": "^2.2.5"
   }
