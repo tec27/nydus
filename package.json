@@ -43,7 +43,7 @@
     "chai-as-promised": "^5.1.0",
     "engine.io-client": "^1.5.2",
     "eslint": "^1.6.0",
-    "eslint-plugin-babel": "^1.1.0",
+    "eslint-plugin-babel": "^2.1.1",
     "mocha": "^2.2.5",
     "nydus-client": "^0.3.0"
   }
