@@ -22,7 +22,7 @@ describe('server', () => {
   })
 
   it('should have the same protocolVersion as the client', () => {
-    expect(NydusServer.protocolVersion).to.equal(require('../client').protocolVersion)
+    expect(NydusServer.protocolVersion).to.equal(require('nydus-client').protocolVersion)
   })
 })
 
