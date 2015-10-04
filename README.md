@@ -1,4 +1,4 @@
-#nydus
+# nydus
 
 WebSocket server using the [nydus protocol](https://github.com/tec27/nydus-protocol), a simple RPC/PubSub protocol.
 
@@ -7,6 +7,6 @@ WebSocket server using the [nydus protocol](https://github.com/tec27/nydus-proto
 
 [![NPM](https://nodei.co/npm/nydus.png)](https://nodei.co/npm/nydus/)
 
-##License
+## License
 
 MIT

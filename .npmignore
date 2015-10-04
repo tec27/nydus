@@ -1,3 +1,4 @@
-*.js
+index.js
+compuser.js
 test
 npm-debug.log
