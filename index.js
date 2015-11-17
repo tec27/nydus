@@ -206,6 +206,7 @@ export class NydusServer extends EventEmitter {
       path: route.route,
       params: fromJS(route.params),
       splats: fromJS(route.splats),
+      body: msg.data
     })
 
     route.action(initData).then(result => {

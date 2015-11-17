@@ -4,7 +4,7 @@ import http from 'http'
 import eio from 'engine.io-client'
 import { decode, encode, WELCOME, INVOKE, ERROR, RESULT, PUBLISH } from 'nydus-protocol'
 
-import nydus, { NydusServer } from '../'
+import nydus, { NydusServer } from '../index'
 
 chai.use(chaiAsPromised)
 
@@ -281,7 +281,7 @@ describe('nydus(httpServer)', () => {
     })
   })
 
-  it('should provide params and splats to router handlers', done => {
+  it('should provide params and splats to route handlers', done => {
     n.registerRoute('/hello/:who/*', async data => {
       try {
         expect(data.get('params').get('who')).to.be.eql('me')
@@ -296,6 +296,23 @@ describe('nydus(httpServer)', () => {
     connectClient()
     client.once('message', msg => {
       client.send(encode(INVOKE, 'hi', '27', '/hello/me/whatever'))
+    })
+  })
+
+  it('should provide invoke payloads to route handlers', done => {
+    n.registerRoute('/hello', async data => {
+      try {
+        expect(data.get('body')).to.be.eql({ who: 'me' })
+      } catch (err) {
+        done(err)
+        throw err
+      }
+      done()
+    })
+
+    connectClient()
+    client.once('message', msg => {
+      client.send(encode(INVOKE, { who: 'me' }, '27', '/hello'))
     })
   })
 })
