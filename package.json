@@ -8,6 +8,7 @@
     "build": "babel --out-dir lib/ *.js",
     "clean": "rimraf lib",
     "lint": "eslint --ext .js ./",
+    "posttest": "npm run lint",
     "prepublish": "npm run lint && npm run test && npm run clean && npm run build",
     "test": "mocha -R spec --compilers js:babel/register --recursive test/"
   },

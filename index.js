@@ -70,12 +70,32 @@ export class NydusClient extends EventEmitter {
   }
 }
 
+function defaultErrorConverter(err) {
+  const isDev = process.env.NODE_ENV !== 'production'
+  const status = err.status || 500
+
+  let message
+  if (err.status || isDev) {
+    message = err.message
+  }
+  message = message || STATUS_CODES[status]
+
+  let body = err.body
+  if (!body && !err.status && isDev) {
+    body = err.stack
+  }
+
+  return { status, message, body }
+}
+
 const NOT_FOUND = { status: 404, message: 'Not Found' }
 
 export class NydusServer extends EventEmitter {
   constructor(options) {
     super()
     this.eioServer = eio(options)
+    this.invokeErrorConverter = options && options.invokeErrorConverter ?
+        options.invokeErrorConverter : defaultErrorConverter
     this._idGen = cuid
     this.clients = Map()
     this._subscriptions = Map()
@@ -212,10 +232,13 @@ export class NydusServer extends EventEmitter {
     route.action(initData).then(result => {
       client._send(encode(RESULT, result, msg.id))
     }).catch(err => {
-      const status = err.status || 500
-      const message = err.message || STATUS_CODES[status]
-      const body = err.body
-      client._send(encode(ERROR, { status, message, body }, msg.id))
+      let result
+      try {
+        result = this.invokeErrorConverter(err, client)
+      } catch (convertErr) {
+        result = { status: 500, message: STATUS_CODES[500] }
+      }
+      client._send(encode(ERROR, result, msg.id))
     })
   }
 }

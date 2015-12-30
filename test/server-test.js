@@ -247,11 +247,12 @@ describe('nydus(httpServer)', () => {
       if (i++ === 0) {
         client.send(encode(INVOKE, 'hi', '27', '/hello'))
       } else {
-        expect(decode(msg)).to.be.eql(packet({
-          type: ERROR,
-          data: { status: 500, message: 'Omg error' },
-          id: '27'
-        }))
+        const decoded = decode(msg)
+        expect(decoded.type).to.be.eql(ERROR)
+        expect(decoded.id).to.be.eql('27')
+        expect(decoded.data.message).to.be.eql('Omg error')
+        expect(decoded.data.status).to.be.eql(500)
+        expect(decoded.data.body).to.have.length.above(0)
         done()
       }
     })
