@@ -3,14 +3,17 @@
   "version": "0.3.4",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "lib/index.js",
+  "engines": {
+    "node": ">= 6.0.0"
+  },
   "scripts": {
-    "autotest": "mocha --watch -R spec --compilers js:babel/register --recursive test/",
+    "autotest": "mocha --watch -R spec --compilers js:babel-register --recursive test/",
     "build": "babel --out-dir lib/ *.js",
     "clean": "rimraf lib",
     "lint": "eslint --ext .js ./",
     "posttest": "npm run lint",
     "prepublish": "npm run lint && npm run test && npm run clean && npm run build",
-    "test": "mocha -R spec --compilers js:babel/register --recursive test/"
+    "test": "mocha -R spec --compilers js:babel-register --recursive test/"
   },
   "repository": {
     "type": "git",
@@ -39,14 +42,17 @@
     "ruta3": "^2.0.0"
   },
   "devDependencies": {
-    "babel": "^5.6.23",
-    "babel-core": "^5.7.4",
-    "babel-eslint": "^4.0.5",
+    "babel-cli": "^6.8.0",
+    "babel-core": "^6.8.0",
+    "babel-eslint": "^6.0.2",
+    "babel-preset-node6": "^11.0.0",
+    "babel-preset-stage-0": "6.5.0",
+    "babel-register": "^6.3.13",
     "chai": "^3.2.0",
     "chai-as-promised": "^5.1.0",
     "engine.io-client": "^1.5.2",
-    "eslint": "^1.6.0",
-    "eslint-plugin-babel": "^2.1.1",
+    "eslint": "^2.5.3",
+    "eslint-plugin-babel": "^3.0.0",
     "mocha": "^2.2.5",
     "nydus-client": "^0.3.0",
     "rimraf": "^2.4.3"

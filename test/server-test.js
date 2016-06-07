@@ -38,7 +38,10 @@ describe('nydus(httpServer)', () => {
     n.setIdGen(idGen)
     port = await new Promise((resolve, reject) => {
       server.listen(0, function(err) {
-        if (err) return reject(err)
+        if (err) {
+          reject(err)
+          return
+        }
         resolve(server.address().port)
       })
     })
