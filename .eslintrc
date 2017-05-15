@@ -43,7 +43,7 @@
     "func-names": 0,
     "func-style": 0,
     "generator-star": 0,
-    "generator-star-spacing": 0,
+    "generator-star-spacing": [2, { "before": false, "after": true }],
     "global-strict": 0,
     "guard-for-in": 0,
     "handle-callback-err": [2, "^(err|error)$" ],
@@ -160,7 +160,7 @@
     "no-warning-comments": [2, { "terms": [ "fixme", "do not submit", "xxx" ], "location": "start" }],
     "no-with": 2,
     "object-curly-spacing": 0,
-    "object-shorthand": 0,
+    "object-shorthand": 2,
     "one-var": 0,
     "operator-assignment": 0,
     "operator-linebreak": [2, "after"],
@@ -191,9 +191,6 @@
     "yoda": 0,
 
     "babel/block-scoped-var": 0,
-    "babel/object-shorthand": 2,
-    "babel/generator-star": 0,
-    "babel/generator-star-spacing": [2, "after"],
     "babel/new-cap": [2, { "newIsCap": true, "capIsNew": false }],
     "babel/space-in-brackets": 0,
   }
