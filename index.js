@@ -30,8 +30,8 @@ export class NydusClient extends EventEmitter {
     this._subscriptions = Set()
 
     conn.on('error', err => this.emit('error', err))
-      .on('close', ::this._onClose)
-      .on('message', ::this._onMessage)
+      .on('close', this._onClose.bind(this))
+      .on('message', this._onMessage.bind(this))
   }
 
   get readyState() {
@@ -100,11 +100,11 @@ export class NydusServer extends EventEmitter {
     this.clients = Map()
     this._subscriptions = Map()
     this._router = ruta()
-    this._onInvokeFunc = ::this._onInvoke
-    this._onCloseFunc = ::this._onDisconnect
+    this._onInvokeFunc = this._onInvoke.bind(this)
+    this._onCloseFunc = this._onDisconnect.bind(this)
 
     this.eioServer.on('error', err => this.emit('error', err))
-      .on('connection', ::this._onConnection)
+      .on('connection', this._onConnection.bind(this))
   }
 
   // Attach this NydusServer to a particular HTTP(S) server, making it listen to UPGRADE requests.

@@ -4,7 +4,7 @@
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "lib/index.js",
   "engines": {
-    "node": ">= 6.0.0"
+    "node": ">= 7.6.0"
   },
   "scripts": {
     "autotest": "mocha --watch -R spec --compilers js:babel-register --recursive test/",
@@ -33,9 +33,9 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "dependencies": {
+    "babel-preset-env": "^1.4.0",
     "backo": "^1.1.0",
     "cuid": "^1.2.5",
-    "debug": "^2.2.0",
     "engine.io": "^3.1.0",
     "immutable": "^3.7.4",
     "nydus-protocol": "^0.3.1",
@@ -45,8 +45,6 @@
     "babel-cli": "^6.8.0",
     "babel-core": "^6.8.0",
     "babel-eslint": "^7.2.3",
-    "babel-preset-node6": "^11.0.0",
-    "babel-preset-stage-0": "^6.24.1",
     "babel-register": "^6.3.13",
     "chai": "^3.2.0",
     "chai-as-promised": "^6.0.0",
