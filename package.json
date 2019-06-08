@@ -7,13 +7,13 @@
     "node": ">= 7.6.0"
   },
   "scripts": {
-    "autotest": "mocha --watch -R spec --compilers js:babel-register --recursive test/",
+    "autotest": "mocha --watch -R spec --require @babel/register --recursive test/",
     "build": "babel --out-dir lib/ *.js",
     "clean": "rimraf lib",
     "lint": "eslint --ext .js ./",
     "posttest": "yarn run lint",
     "prepublish": "yarn run lint && yarn run test && yarn run clean && yarn run build",
-    "test": "mocha -R spec --compilers js:babel-register --recursive test/"
+    "test": "mocha -R spec --require @babel/register --recursive test/"
   },
   "repository": {
     "type": "git",
@@ -33,26 +33,26 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "dependencies": {
-    "babel-preset-env": "^1.4.0",
     "backo": "^1.1.0",
-    "cuid": "^1.2.5",
-    "engine.io": "^3.1.0",
-    "immutable": "^3.7.4",
+    "cuid": "^2.1.6",
+    "engine.io": "^3.3.2",
+    "immutable": "^4.0.0-rc.12",
     "nydus-protocol": "^1.0.0",
     "ruta3": "^2.0.0"
   },
   "devDependencies": {
-    "babel-cli": "^6.8.0",
-    "babel-core": "^6.8.0",
-    "babel-eslint": "^7.2.3",
-    "babel-register": "^6.3.13",
-    "chai": "^3.2.0",
-    "chai-as-promised": "^6.0.0",
-    "engine.io-client": "^3.1.1",
-    "eslint": "^3.19.0",
-    "eslint-plugin-babel": "^4.1.1",
-    "mocha": "^3.4.1",
-    "nydus-client": "^1.0.0",
-    "rimraf": "^2.4.3"
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
+    "@babel/register": "^7.4.4",
+    "babel-eslint": "^10.0.1",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "engine.io-client": "^3.3.2",
+    "eslint": "^5.16.0",
+    "eslint-plugin-babel": "^5.3.0",
+    "mocha": "^6.1.4",
+    "nydus-client": "^1.0.1",
+    "rimraf": "^2.6.3"
   }
 }
