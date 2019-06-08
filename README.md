@@ -16,7 +16,7 @@ Create a nydus server and attach it to a particular `httpServer`. An optional `o
 be passed as the second argument.
 For the list of acceptable options, check the [constructor method](https://github.com/socketio/engine.io#methods-1) of engine.io.
 
-##API
+## API
 
 <b><code>nydusServer.registerRoute(pathPattern, ...handlers)</code></b>
 
