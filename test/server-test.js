@@ -45,18 +45,23 @@ describe('nydus(httpServer)', () => {
         resolve(server.address().port)
       })
     })
+    console.log('port: ' + port)
   })
 
   afterEach(() => {
     if (client) {
       client.close()
+      client = undefined
     }
     n.close()
     server.close()
+
+    n = undefined
+    server = undefined
   })
 
   async function connectClient() {
-    client = eio('ws://localhost:' + port)
+    client = eio('ws://localhost:' + port, { transports: ['websocket'] })
     return await new Promise((resolve, reject) => {
       client.on('open', () => resolve(client))
         .on('error', err => reject(err))

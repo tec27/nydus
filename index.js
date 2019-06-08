@@ -95,7 +95,7 @@ export class NydusServer extends EventEmitter {
     super()
     this.eioServer = eio(options)
     this.invokeErrorConverter = options && options.invokeErrorConverter ?
-        options.invokeErrorConverter : defaultErrorConverter
+      options.invokeErrorConverter : defaultErrorConverter
     this._idGen = cuid
     this.clients = Map()
     this._subscriptions = Map()
