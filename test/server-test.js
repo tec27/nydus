@@ -45,7 +45,6 @@ describe('nydus(httpServer)', () => {
         resolve(server.address().port)
       })
     })
-    console.log('port: ' + port)
   })
 
   afterEach(() => {
