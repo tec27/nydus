@@ -85,12 +85,13 @@ describe('nydus(httpServer)', () => {
   })
 
   it('should emit connection events', done => {
+    let promise = Promise.resolve()
     n.on('connection', socket => {
       expect(socket).not.to.be.null
-      done()
+      promise.then(() => done(), () => done())
     })
 
-    connectClient()
+    promise = connectClient()
   })
 
   it('should publish to subscribed clients', done => {
