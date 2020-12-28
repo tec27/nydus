@@ -1,4 +1,3 @@
 node_modules
-npm-debug.log
-lib
-.vscode
+yarn-error.log
+/dist

@@ -29,7 +29,8 @@ export class NydusClient extends EventEmitter {
     this._idGen = idGen
     this._subscriptions = Set()
 
-    conn.on('error', err => this.emit('error', err))
+    conn
+      .on('error', err => this.emit('error', err))
       .on('close', this._onClose.bind(this))
       .on('message', this._onMessage.bind(this))
   }
@@ -94,8 +95,8 @@ export class NydusServer extends EventEmitter {
   constructor(options) {
     super()
     this.eioServer = eio(options)
-    this.invokeErrorConverter = options && options.invokeErrorConverter ?
-      options.invokeErrorConverter : defaultErrorConverter
+    this.invokeErrorConverter =
+      options && options.invokeErrorConverter ? options.invokeErrorConverter : defaultErrorConverter
     this._idGen = cuid
     this.clients = Map()
     this._subscriptions = Map()
@@ -103,7 +104,8 @@ export class NydusServer extends EventEmitter {
     this._onInvokeFunc = this._onInvoke.bind(this)
     this._onCloseFunc = this._onDisconnect.bind(this)
 
-    this.eioServer.on('error', err => this.emit('error', err))
+    this.eioServer
+      .on('error', err => this.emit('error', err))
       .on('connection', this._onConnection.bind(this))
   }
 
@@ -199,8 +201,13 @@ export class NydusServer extends EventEmitter {
   }
 
   _onConnection(socket) {
-    const client =
-        new NydusClient(cuid(), socket, this._onInvokeFunc, this._onCloseFunc, this._idGen)
+    const client = new NydusClient(
+      cuid(),
+      socket,
+      this._onInvokeFunc,
+      this._onCloseFunc,
+      this._idGen,
+    )
     this.clients = this.clients.set(client.id, client)
     socket.send(encode(WELCOME, protocolVersion))
     this.emit('connection', client)
@@ -226,20 +233,23 @@ export class NydusServer extends EventEmitter {
       path: route.route,
       params: fromJS(route.params),
       splats: fromJS(route.splats),
-      body: msg.data
+      body: msg.data,
     })
 
-    route.action(initData).then(result => {
-      client._send(encode(RESULT, result, msg.id))
-    }).catch(err => {
-      let result
-      try {
-        result = this.invokeErrorConverter(err, client)
-      } catch (convertErr) {
-        result = { status: 500, message: STATUS_CODES[500] }
-      }
-      client._send(encode(ERROR, result, msg.id))
-    })
+    route
+      .action(initData)
+      .then(result => {
+        client._send(encode(RESULT, result, msg.id))
+      })
+      .catch(err => {
+        let result
+        try {
+          result = this.invokeErrorConverter(err, client)
+        } catch (convertErr) {
+          result = { status: 500, message: STATUS_CODES[500] }
+        }
+        client._send(encode(ERROR, result, msg.id))
+      })
   }
 }
 

@@ -6,12 +6,12 @@ export default function compose(fns) {
   while (i--) {
     const fn = fns[i]
     const curNext = next
-    next = function(data) {
+    next = function (data) {
       return fn(data, curNext)
     }
   }
 
-  return async function(data) {
+  return async function (data) {
     return await next(data)
   }
 }
