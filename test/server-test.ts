@@ -1,15 +1,24 @@
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import http from 'http'
+import { EventEmitter } from 'events'
 import eio from 'engine.io-client'
-import { decode, encode, WELCOME, INVOKE, ERROR, RESULT, PUBLISH } from 'nydus-protocol'
+import { AddressInfo } from 'net'
+import {
+  decode,
+  encode,
+  MessageType,
+  NydusErrorMessage,
+  NydusMessage,
+  UnvalidatedMessage,
+} from 'nydus-protocol'
 
-import nydus, { NydusServer } from '../index'
+import nydus, { InvokeError, NydusServer } from '../index'
 
 chai.use(chaiAsPromised)
 
-function packet({ type, id, path, data }) {
-  return { type, id, path, data }
+function packet<T>({ type, data, id, path }: UnvalidatedMessage<T>): NydusMessage<T> {
+  return ({ type, data, id, path } as any) as NydusMessage<T>
 }
 
 function idGen() {
@@ -27,23 +36,17 @@ describe('server', () => {
 })
 
 describe('nydus(httpServer)', () => {
-  let server
-  let n
-  let port
-  let client
+  let server: http.Server
+  let n: NydusServer
+  let port: number
+  let client: eio.Socket | undefined
 
   beforeEach(async () => {
     server = http.createServer()
     n = nydus(server)
     n.setIdGen(idGen)
-    port = await new Promise((resolve, reject) => {
-      server.listen(0, function (err) {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve(server.address().port)
-      })
+    port = await new Promise(resolve => {
+      server.listen(0, () => resolve((server.address() as AddressInfo).port))
     })
   })
 
@@ -61,8 +64,8 @@ describe('nydus(httpServer)', () => {
 
   async function connectClient() {
     client = eio('ws://localhost:' + port, { transports: ['websocket'] })
-    return await new Promise((resolve, reject) => {
-      client.on('open', () => resolve(client)).on('error', err => reject(err))
+    return await new Promise<eio.Socket>((resolve, reject) => {
+      client.on('open', () => resolve(client)).on('error', (err: Error) => reject(err))
     })
   }
 
@@ -77,14 +80,16 @@ describe('nydus(httpServer)', () => {
   it('should send welcome message to clients', done => {
     connectClient()
     client.on('message', msg => {
-      expect(decode(msg)).to.eql(packet({ type: WELCOME, data: NydusServer.protocolVersion }))
+      expect(decode(msg as string)).to.eql(
+        packet({ type: MessageType.Welcome, data: NydusServer.protocolVersion }),
+      )
       client.close()
       done()
     })
   })
 
   it('should emit connection events', done => {
-    let promise = Promise.resolve()
+    let promise: Promise<eio.Socket> = null
     n.on('connection', socket => {
       expect(socket).not.to.be.null
       promise.then(
@@ -102,7 +107,9 @@ describe('nydus(httpServer)', () => {
     client.on('message', msg => {
       if (i++ < 1) return
 
-      expect(decode(msg)).to.eql(packet({ type: PUBLISH, data: 'hi', path: '/hello' }))
+      expect(decode(msg as string)).to.eql(
+        packet({ type: MessageType.Publish, data: 'hi', path: '/hello' }),
+      )
       done()
     })
 
@@ -115,7 +122,7 @@ describe('nydus(httpServer)', () => {
   it('should support subscribing clients and pushing initial data', done => {
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client.on('message', () => {
       if (i++ < 1) return
       done(new Error("first client shouldn't have received another message"))
     })
@@ -124,7 +131,9 @@ describe('nydus(httpServer)', () => {
     client.on('message', msg => {
       if (j++ < 1) return
 
-      expect(decode(msg)).to.eql(packet({ type: PUBLISH, data: 'hi', path: '/hello' }))
+      expect(decode(msg as string)).to.eql(
+        packet({ type: MessageType.Publish, data: 'hi', path: '/hello' }),
+      )
       done()
     })
 
@@ -138,7 +147,7 @@ describe('nydus(httpServer)', () => {
   it('should allow unsubscribing individual clients', done => {
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client.on('message', () => {
       if (i++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
@@ -157,14 +166,14 @@ describe('nydus(httpServer)', () => {
   it('should allow unsubscribing all clients from a path', done => {
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client.on('message', () => {
       if (i++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
 
     connectClient()
     let j = 0
-    client.on('message', msg => {
+    client.on('message', () => {
       if (j++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
@@ -189,7 +198,7 @@ describe('nydus(httpServer)', () => {
   })
 
   it('should accept invokes from clients on registered routes', done => {
-    n.registerRoute('/hello', async (data, next) => {
+    n.registerRoute('/hello', async () => {
       return 'hi'
     })
 
@@ -197,9 +206,11 @@ describe('nydus(httpServer)', () => {
     let i = 0
     client.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'))
       } else {
-        expect(decode(msg)).to.be.eql(packet({ type: RESULT, data: 'hi', id: '27' }))
+        expect(decode(msg as string)).to.be.eql(
+          packet({ type: MessageType.Result, data: 'hi', id: '27' }),
+        )
         done()
       }
     })
@@ -210,11 +221,11 @@ describe('nydus(httpServer)', () => {
     let i = 0
     client.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'))
       } else {
-        expect(decode(msg)).to.be.eql(
+        expect(decode(msg as string)).to.be.eql(
           packet({
-            type: ERROR,
+            type: MessageType.Error,
             data: { status: 404, message: 'Not Found' },
             id: '27',
           }),
@@ -225,21 +236,19 @@ describe('nydus(httpServer)', () => {
   })
 
   it('should send back errors when invoke handlers cause a rejection', done => {
-    n.registerRoute('/hello', async (data, next) => {
-      const err = new Error('Custom Error')
-      err.status = 527
-      throw err
+    n.registerRoute('/hello', async () => {
+      throw new InvokeError('Custom Error', 527)
     })
 
     connectClient()
     let i = 0
     client.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'))
       } else {
-        expect(decode(msg)).to.be.eql(
+        expect(decode(msg as string)).to.be.eql(
           packet({
-            type: ERROR,
+            type: MessageType.Error,
             data: { status: 527, message: 'Custom Error' },
             id: '27',
           }),
@@ -250,7 +259,7 @@ describe('nydus(httpServer)', () => {
   })
 
   it('should send back a 500 if no status is set on invoke rejections', done => {
-    n.registerRoute('/hello', async (data, next) => {
+    n.registerRoute('/hello', async () => {
       const err = new Error('Omg error')
       throw err
     })
@@ -259,10 +268,10 @@ describe('nydus(httpServer)', () => {
     let i = 0
     client.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'))
       } else {
-        const decoded = decode(msg)
-        expect(decoded.type).to.be.eql(ERROR)
+        const decoded = decode(msg as string) as NydusErrorMessage<any>
+        expect(decoded.type).to.be.eql(MessageType.Error)
         expect(decoded.id).to.be.eql('27')
         expect(decoded.data.message).to.be.eql('Omg error')
         expect(decoded.data.status).to.be.eql(500)
@@ -274,21 +283,18 @@ describe('nydus(httpServer)', () => {
 
   it('should allow sending bodies along with invoke rejections', done => {
     n.registerRoute('/hello', async (data, next) => {
-      const err = new Error('Big error')
-      err.status = 527
-      err.body = { hello: 'world' }
-      throw err
+      throw new InvokeError('Big error', 527, { hello: 'world' })
     })
 
     connectClient()
     let i = 0
     client.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(INVOKE, 'hi', '27', '/hello'))
+        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'))
       } else {
-        expect(decode(msg)).to.be.eql(
+        expect(decode(msg as string)).to.be.eql(
           packet({
-            type: ERROR,
+            type: MessageType.Error,
             data: { status: 527, message: 'Big error', body: { hello: 'world' } },
             id: '27',
           }),
@@ -311,8 +317,8 @@ describe('nydus(httpServer)', () => {
     })
 
     connectClient()
-    client.once('message', msg => {
-      client.send(encode(INVOKE, 'hi', '27', '/hello/me/whatever'))
+    ;((client as any) as EventEmitter).once('message', () => {
+      client.send(encode(MessageType.Invoke, 'hi', '27', '/hello/me/whatever'))
     })
   })
 
@@ -328,8 +334,8 @@ describe('nydus(httpServer)', () => {
     })
 
     connectClient()
-    client.once('message', msg => {
-      client.send(encode(INVOKE, { who: 'me' }, '27', '/hello'))
+    ;((client as any) as EventEmitter).once('message', () => {
+      client.send(encode(MessageType.Invoke, { who: 'me' }, '27', '/hello'))
     })
   })
 })

@@ -48,6 +48,7 @@
   "devDependencies": {
     "@types/backo2": "^1.0.1",
     "@types/chai": "^4.2.14",
+    "@types/engine.io": "^3.1.4",
     "@types/engine.io-client": "^3.1.4",
     "@types/mocha": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.11.0",
