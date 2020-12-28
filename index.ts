@@ -11,7 +11,24 @@ export { protocolVersion }
 
 const PACKAGE_ONLY = Symbol('nydus-package-only')
 
+interface NydusClientEvents {
+  /** Fired when the client has disconnected. */
+  close: (reason: string, description?: Error) => void
+  /** Fired when a general error occurs. */
+  error: (err: Error) => void
+}
+
+export declare interface NydusClient {
+  emit<U extends keyof NydusClientEvents>(
+    event: U,
+    ...args: Parameters<NydusClientEvents[U]>
+  ): boolean
+  on<U extends keyof NydusClientEvents>(event: U, listener: NydusClientEvents[U]): this
+  once<U extends keyof NydusClientEvents>(event: U, listener: NydusClientEvents[U]): this
+}
+
 /** A client that is connected to the server. */
+// eslint-disable-next-line no-redeclare
 export class NydusClient extends EventEmitter {
   readonly id: string
   readonly conn: eio.Socket
@@ -134,9 +151,27 @@ export interface NydusServerOptions extends eio.ServerOptions, eio.AttachOptions
 
 export type RouteHandler = ComposableFunc
 
+interface NydusServerEvents {
+  /** Fired when a new client has connected. */
+  connection: (client: NydusClient) => void
+  /** Fired when a general error occurs. */
+  error: (err: Error) => void
+}
+
+export declare interface NydusServer {
+  emit<U extends keyof NydusServerEvents>(
+    event: U,
+    ...args: Parameters<NydusServerEvents[U]>
+  ): boolean
+  on<U extends keyof NydusServerEvents>(event: U, listener: NydusServerEvents[U]): this
+  once<U extends keyof NydusServerEvents>(event: U, listener: NydusServerEvents[U]): this
+}
+
+// eslint-disable-next-line no-redeclare
 export class NydusServer extends EventEmitter {
   static readonly protocolVersion = protocolVersion
 
+  /** A map of client ID -> client. */
   clients: Map<string, NydusClient>
 
   private eioServer: eio.Server
