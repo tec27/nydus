@@ -150,6 +150,7 @@ export interface NydusServerOptions extends eio.ServerOptions, eio.AttachOptions
 }
 
 export type RouteHandler = ComposableFunc
+export { NextFunc }
 
 interface NydusServerEvents {
   /** Fired when a new client has connected. */
