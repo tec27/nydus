@@ -113,7 +113,7 @@ export class InvokeError extends Error {
 }
 
 function isInvokeError(err: Error): err is InvokeError {
-  return (err as any).hasOwnProperty('status')
+  return typeof (err as any).status === 'number'
 }
 
 function defaultErrorConverter(err: Error): unknown {
