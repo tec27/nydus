@@ -32,26 +32,23 @@ export declare interface NydusClient {
 export class NydusClient extends EventEmitter {
   readonly id: string
   readonly conn: eio.Socket
-  private onInvokeFunc: (client: NydusClient, message: NydusInvokeMessage<unknown>) => void
-  private onCloseFunc: (client: NydusClient) => void
   subscriptions: Set<string>
 
   constructor(
     id: string,
     conn: eio.Socket,
-    onInvoke: (client: NydusClient, message: NydusInvokeMessage<unknown>) => void,
-    onClose: (client: NydusClient) => void,
+    private onInvoke: (client: NydusClient, message: NydusInvokeMessage<unknown>) => void,
+    private onClose: (client: NydusClient) => void,
+    private onParserError: (client: NydusClient, msg: string) => void,
   ) {
     super()
     this.id = id
     this.conn = conn
-    this.onInvokeFunc = onInvoke
-    this.onCloseFunc = onClose
     this.subscriptions = Set()
 
     conn
       .on('error', err => this.emit('error', err))
-      .on('close', this.onClose.bind(this))
+      .on('close', this.handleClose.bind(this))
       .on('message', msg => this.onMessage(msg as string))
   }
 
@@ -89,16 +86,17 @@ export class NydusClient extends EventEmitter {
     const decoded = decode(msg)
     switch (decoded.type) {
       case MessageType.ParserError:
+        this.onParserError(this, msg)
         this.conn.close() // will cause a call to onClose
         break
       case MessageType.Invoke:
-        this.onInvokeFunc(this, decoded)
+        this.onInvoke(this, decoded)
         break
     }
   }
 
-  private onClose(reason: string, description?: Error) {
-    this.onCloseFunc(this)
+  private handleClose(reason: string, description?: Error) {
+    this.onClose(this)
     this.emit('close', reason, description)
   }
 }
@@ -157,6 +155,13 @@ interface NydusServerEvents {
   connection: (client: NydusClient) => void
   /** Fired when a general error occurs. */
   error: (err: Error) => void
+  /** Fired when a client receives a message it could not parse. */
+  parserError: (client: NydusClient, msg: string) => void
+  /**
+   * Fired when an invoke throws an error that gets converted to a 500 (e.g. an internal server
+   * error).
+   */
+  invokeError: (err: Error, client: NydusClient, msg: NydusInvokeMessage<unknown>) => void
 }
 
 export declare interface NydusServer {
@@ -183,6 +188,7 @@ export class NydusServer extends EventEmitter {
 
   private onInvokeFunc = this.onInvoke.bind(this)
   private onCloseFunc = this.onDisconnect.bind(this)
+  private onParserErrorFunc = this.onParserError.bind(this)
 
   constructor(options: Partial<NydusServerOptions> = {}) {
     super()
@@ -303,7 +309,13 @@ export class NydusServer extends EventEmitter {
   }
 
   private onConnection(socket: eio.Socket) {
-    const client = new NydusClient(this.idGen(), socket, this.onInvokeFunc, this.onCloseFunc)
+    const client = new NydusClient(
+      this.idGen(),
+      socket,
+      this.onInvokeFunc,
+      this.onCloseFunc,
+      this.onParserErrorFunc,
+    )
     this.clients = this.clients.set(client.id, client)
     socket.send(encode(MessageType.Welcome, protocolVersion))
     this.emit('connection', client)
@@ -341,11 +353,24 @@ export class NydusServer extends EventEmitter {
         let result
         try {
           result = this.invokeErrorConverter(err, client)
+          if (
+            result &&
+            typeof result === 'object' &&
+            result.hasOwnProperty('status') &&
+            (result as any).status === 500
+          ) {
+            this.emit('invokeError', err, client, msg)
+          }
         } catch (convertErr) {
           result = { status: 500, message: STATUS_CODES[500] }
+          this.emit('error', convertErr)
         }
         client.send(PACKAGE_ONLY, encode(MessageType.Error, result, msg.id))
       })
+  }
+
+  private onParserError(client: NydusClient, msg: string) {
+    this.emit('parserError', client, msg)
   }
 }
 

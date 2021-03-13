@@ -9,11 +9,12 @@ import {
   encode,
   MessageType,
   NydusErrorMessage,
+  NydusInvokeMessage,
   NydusMessage,
   UnvalidatedMessage,
 } from 'nydus-protocol'
 
-import nydus, { InvokeError, NydusServer } from '../index'
+import nydus, { InvokeError, NydusClient, NydusServer } from '../index'
 
 chai.use(chaiAsPromised)
 
@@ -263,6 +264,18 @@ describe('nydus(httpServer)', () => {
       const err = new Error('Omg error')
       throw err
     })
+    let invokeErrorParams: {
+      err?: Error
+      client?: NydusClient
+      msg?: NydusInvokeMessage<unknown>
+    } = {}
+    n.on('invokeError', (err, client, msg) => {
+      invokeErrorParams = {
+        err,
+        client,
+        msg,
+      }
+    })
 
     connectClient()
     let i = 0
@@ -276,6 +289,10 @@ describe('nydus(httpServer)', () => {
         expect(decoded.data.message).to.be.eql('Omg error')
         expect(decoded.data.status).to.be.eql(500)
         expect(decoded.data.body).to.have.length.above(0)
+
+        expect(invokeErrorParams.err).to.exist
+        expect(invokeErrorParams.client).to.exist
+        expect(invokeErrorParams.msg).to.exist
         done()
       }
     })
