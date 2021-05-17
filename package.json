@@ -15,6 +15,8 @@
     "lint": "eslint --ext .js,.ts ./",
     "prepublishOnly": "yarn run lint && yarn run test && yarn run clean && yarn run build",
     "test": "ts-mocha -p tsconfig-cjs.json -R spec test/**.ts",
+    "testonly": "ts-mocha -p tsconfig-cjs.json -R spec test/**.ts",
+    "posttest": "yarn run tsc --noEmit && yarn run lint",
     "watch": "tsc -w"
   },
   "repository": {
