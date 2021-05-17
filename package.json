@@ -1,6 +1,6 @@
 {
   "name": "nydus",
-  "version": "2.1.1",
+  "version": "3.0.0",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "dist/cjs/index.js",
   "module": "dist/modules/index.js",
@@ -63,7 +63,7 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.3.0",
     "mocha": "^8.2.1",
-    "nydus-client": "^2.0.0",
+    "nydus-client": "^3.0.0",
     "prettier": "^2.2.1",
     "rimraf": "^3.0.2",
     "ts-mocha": "^8.0.0",
