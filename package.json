@@ -45,7 +45,8 @@
     "engine.io": "2Pacalypse-/engine.io#master",
     "immutable": "^4.0.0-rc.12",
     "nydus-protocol": "^2.0.0",
-    "ruta3": "^2.0.0"
+    "ruta3": "^2.0.0",
+    "typed-emitter": "^1.3.1"
   },
   "devDependencies": {
     "@types/backo2": "^1.0.1",

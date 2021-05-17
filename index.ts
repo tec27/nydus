@@ -6,6 +6,7 @@ import { fromJS, Map, Set } from 'immutable'
 import ruta, { Router } from 'ruta3'
 import compose, { ComposableFunc, NextFunc } from './composer'
 import { encode, decode, protocolVersion, MessageType, NydusInvokeMessage } from 'nydus-protocol'
+import { TypedEventEmitter } from './typed-emitter'
 
 export { protocolVersion }
 
@@ -18,18 +19,8 @@ interface NydusClientEvents {
   error: (err: Error) => void
 }
 
-export declare interface NydusClient {
-  emit<U extends keyof NydusClientEvents>(
-    event: U,
-    ...args: Parameters<NydusClientEvents[U]>
-  ): boolean
-  on<U extends keyof NydusClientEvents>(event: U, listener: NydusClientEvents[U]): this
-  once<U extends keyof NydusClientEvents>(event: U, listener: NydusClientEvents[U]): this
-}
-
 /** A client that is connected to the server. */
-// eslint-disable-next-line no-redeclare
-export class NydusClient extends EventEmitter {
+export class NydusClient extends TypedEventEmitter<NydusClientEvents> {
   readonly id: string
   readonly conn: eio.Socket
   subscriptions: Set<string>
@@ -164,17 +155,7 @@ interface NydusServerEvents {
   invokeError: (err: Error, client: NydusClient, msg: NydusInvokeMessage<unknown>) => void
 }
 
-export declare interface NydusServer {
-  emit<U extends keyof NydusServerEvents>(
-    event: U,
-    ...args: Parameters<NydusServerEvents[U]>
-  ): boolean
-  on<U extends keyof NydusServerEvents>(event: U, listener: NydusServerEvents[U]): this
-  once<U extends keyof NydusServerEvents>(event: U, listener: NydusServerEvents[U]): this
-}
-
-// eslint-disable-next-line no-redeclare
-export class NydusServer extends EventEmitter {
+export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
   static readonly protocolVersion = protocolVersion
 
   /** A map of client ID -> client. */
