@@ -236,6 +236,12 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
    * path, this client will receive a message (until unsubscribed). If initialData is specified and
    * the client was not previously subscribed, this data will be published to the client
    * immediately (but not to the other subscribed clients).
+   *
+   * @param client the NydusClient to subscribe to the specificed path
+   * @param path the path to be registered
+   * @param initialData optional data to send immediately to this client (and only this client).
+   *   This can also be a Promise, in which case the resolved data will be sent to the client. If
+   *   the client is unsubscribed before the Promise resolves, no data will be sent.
    */
   subscribeClient(client: NydusClient, path: string, initialData?: any) {
     const newSubs = this.subscriptions.update(path, Set(), s => s.add(client))
@@ -245,7 +251,15 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
     this.subscriptions = newSubs
     client.subscriptions = client.subscriptions.add(path)
     if (initialData !== undefined) {
-      client.send(PACKAGE_ONLY, encode(MessageType.Publish, initialData, undefined, path))
+      if (!!initialData && typeof initialData.then === 'function') {
+        initialData.then((result: unknown) => {
+          if (this.subscriptions.get(path)?.has(client) && result !== undefined) {
+            client.send(PACKAGE_ONLY, encode(MessageType.Publish, result, undefined, path))
+          }
+        })
+      } else {
+        client.send(PACKAGE_ONLY, encode(MessageType.Publish, initialData, undefined, path))
+      }
     }
   }
 

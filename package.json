@@ -9,7 +9,7 @@
     "node": ">= 12.4.0"
   },
   "scripts": {
-    "autotest": "ts-mocha --p tsconfig-cjs.json w --watch-extensions ts -R spec test/**.ts",
+    "autotest": "ts-mocha -p tsconfig-cjs.json -w --watch-extensions ts -R spec test/**.ts",
     "build": "tsc && tsc -p tsconfig-cjs.json",
     "clean": "rimraf dist",
     "lint": "eslint --ext .js,.ts ./",

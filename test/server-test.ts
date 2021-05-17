@@ -120,28 +120,87 @@ describe('nydus(httpServer)', () => {
     })
   })
 
-  it('should support subscribing clients and pushing initial data', done => {
-    connectClient()
-    let i = 0
-    client.on('message', () => {
-      if (i++ < 1) return
-      done(new Error("first client shouldn't have received another message"))
-    })
-    connectClient()
-    let j = 0
-    client.on('message', msg => {
-      if (j++ < 1) return
-
-      expect(decode(msg as string)).to.eql(
-        packet({ type: MessageType.Publish, data: 'hi', path: '/hello' }),
-      )
-      done()
+  it('should support subscribing clients and pushing initial data', async () => {
+    let readyResolve: () => void
+    const readyPromise = new Promise<void>(resolve => {
+      readyResolve = resolve
     })
 
     let cNum = 0
     n.on('connection', c => {
-      if (cNum++ < 1) n.subscribeClient(c, '/hello')
-      else n.subscribeClient(c, '/hello', 'hi')
+      if (cNum++ < 1) {
+        readyPromise.then(() => {
+          n.subscribeClient(c, '/hello')
+        })
+      } else {
+        readyPromise.then(() => {
+          n.subscribeClient(c, '/hello', 'hi')
+        })
+      }
+    })
+
+    const noInitial = await connectClient()
+    const withInitial = await connectClient()
+
+    await new Promise<void>((resolve, reject) => {
+      noInitial.on('message', () => {
+        reject(new Error("first client shouldn't have received another message"))
+      })
+
+      withInitial.on('message', msg => {
+        try {
+          expect(decode(msg as string)).to.eql(
+            packet({ type: MessageType.Publish, data: 'hi', path: '/hello' }),
+          )
+        } catch (err) {
+          reject(err)
+        }
+        resolve()
+      })
+
+      readyResolve()
+    })
+  })
+
+  it('should support subscribing clients and pushing initial data async-ly', async () => {
+    let readyResolve: () => void
+    const readyPromise = new Promise<void>(resolve => {
+      readyResolve = resolve
+    })
+
+    let cNum = 0
+    n.on('connection', c => {
+      if (cNum++ < 1) {
+        readyPromise.then(() => {
+          n.subscribeClient(c, '/hello')
+        })
+      } else {
+        readyPromise.then(() => {
+          n.subscribeClient(c, '/hello', Promise.resolve('hi'))
+        })
+      }
+    })
+
+    const noInitial = await connectClient()
+    const withInitial = await connectClient()
+
+    await new Promise<void>((resolve, reject) => {
+      noInitial.on('message', () => {
+        reject(new Error("first client shouldn't have received another message"))
+      })
+
+      withInitial.on('message', msg => {
+        try {
+          expect(decode(msg as string)).to.eql(
+            packet({ type: MessageType.Publish, data: 'hi', path: '/hello' }),
+          )
+        } catch (err) {
+          reject(err)
+        }
+        resolve()
+      })
+
+      readyResolve()
     })
   })
 
