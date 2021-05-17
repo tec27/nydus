@@ -19,7 +19,7 @@ import nydus, { InvokeError, NydusClient, NydusServer } from '../index'
 chai.use(chaiAsPromised)
 
 function packet<T>({ type, data, id, path }: UnvalidatedMessage<T>): NydusMessage<T> {
-  return ({ type, data, id, path } as any) as NydusMessage<T>
+  return { type, data, id, path } as any as NydusMessage<T>
 }
 
 function idGen() {
@@ -334,7 +334,7 @@ describe('nydus(httpServer)', () => {
     })
 
     connectClient()
-    ;((client as any) as EventEmitter).once('message', () => {
+    ;(client as any as EventEmitter).once('message', () => {
       client.send(encode(MessageType.Invoke, 'hi', '27', '/hello/me/whatever'))
     })
   })
@@ -351,7 +351,7 @@ describe('nydus(httpServer)', () => {
     })
 
     connectClient()
-    ;((client as any) as EventEmitter).once('message', () => {
+    ;(client as any as EventEmitter).once('message', () => {
       client.send(encode(MessageType.Invoke, { who: 'me' }, '27', '/hello'))
     })
   })
