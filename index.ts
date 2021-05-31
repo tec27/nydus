@@ -243,7 +243,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
    *   This can also be a Promise, in which case the resolved data will be sent to the client. If
    *   the client is unsubscribed before the Promise resolves, no data will be sent.
    */
-  subscribeClient(client: NydusClient, path: string, initialData?: any) {
+  subscribeClient<T = unknown>(client: NydusClient, path: string, initialData?: T | Promise<T>) {
     const newSubs = this.subscriptions.update(path, Set(), s => s.add(client))
     if (newSubs === this.subscriptions) {
       return // client was previously subscribed
@@ -251,8 +251,10 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
     this.subscriptions = newSubs
     client.subscriptions = client.subscriptions.add(path)
     if (initialData !== undefined) {
-      if (!!initialData && typeof initialData.then === 'function') {
-        initialData.then((result: unknown) => {
+      const castInitialData = initialData as any
+      if (!!castInitialData && typeof castInitialData.then === 'function') {
+        const promise = castInitialData as Promise<T>
+        promise.then((result: T) => {
           if (this.subscriptions.get(path)?.has(client) && result !== undefined) {
             client.send(PACKAGE_ONLY, encode(MessageType.Publish, result, undefined, path))
           }
@@ -293,7 +295,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
   /**
    * Publish a message to all clients subscribed to `path`.
    */
-  publish(path: string, data?: any) {
+  publish<T = unknown>(path: string, data?: T) {
     const subs = this.subscriptions.get(path)
     if (!subs) return
 
