@@ -1,4 +1,9 @@
-import eio from 'engine.io'
+import {
+  Server as EngineIoServer,
+  Socket,
+  ServerOptions as EngineIoServerOptions,
+  AttachOptions,
+} from 'engine.io'
 import http, { STATUS_CODES } from 'http'
 import { EventEmitter } from 'events'
 import cuid from 'cuid'
@@ -6,13 +11,13 @@ import { fromJS, Map, Set } from 'immutable'
 import ruta, { Router } from 'ruta3'
 import compose, { ComposableFunc, NextFunc } from './composer'
 import { encode, decode, protocolVersion, MessageType, NydusInvokeMessage } from 'nydus-protocol'
-import { TypedEventEmitter } from './typed-emitter'
+import { EventMap, TypedEventEmitter } from './typed-emitter'
 
 export { protocolVersion }
 
 const PACKAGE_ONLY = Symbol('nydus-package-only')
 
-interface NydusClientEvents {
+interface NydusClientEvents extends EventMap {
   /** Fired when the client has disconnected. */
   close: (reason: string, description?: Error) => void
   /** Fired when a general error occurs. */
@@ -21,20 +26,16 @@ interface NydusClientEvents {
 
 /** A client that is connected to the server. */
 export class NydusClient extends TypedEventEmitter<NydusClientEvents> {
-  readonly id: string
-  readonly conn: eio.Socket
   subscriptions: Set<string>
 
   constructor(
-    id: string,
-    conn: eio.Socket,
+    readonly id: string,
+    readonly conn: Socket,
     private onInvoke: (client: NydusClient, message: NydusInvokeMessage<unknown>) => void,
     private onClose: (client: NydusClient) => void,
     private onParserError: (client: NydusClient, msg: string) => void,
   ) {
     super()
-    this.id = id
-    this.conn = conn
     this.subscriptions = Set()
 
     conn
@@ -69,7 +70,7 @@ export class NydusClient extends TypedEventEmitter<NydusClientEvents> {
 
   send(packageOnlyKey: typeof PACKAGE_ONLY, encoded: string) {
     if (packageOnlyKey === PACKAGE_ONLY) {
-      this.conn.send(encoded)
+      this.conn.send(encoded, undefined)
     }
   }
 
@@ -129,7 +130,7 @@ function defaultErrorConverter(err: Error): unknown {
 
 const NOT_FOUND = { message: 'Not Found', status: 404 }
 
-export interface NydusServerOptions extends eio.ServerOptions, eio.AttachOptions {
+export interface NydusServerOptions extends EngineIoServerOptions, AttachOptions {
   /**
    * A function to convert errors to a sanitized version before sending them to clients. Optional,
    * the default implementation passes a status code, message, and body if present. In development
@@ -141,7 +142,7 @@ export interface NydusServerOptions extends eio.ServerOptions, eio.AttachOptions
 export type RouteHandler = ComposableFunc
 export { NextFunc }
 
-interface NydusServerEvents {
+interface NydusServerEvents extends EventMap {
   /** Fired when a new client has connected. */
   connection: (client: NydusClient) => void
   /** Fired when a general error occurs. */
@@ -161,7 +162,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
   /** A map of client ID -> client. */
   clients: Map<string, NydusClient>
 
-  private eioServer: eio.Server
+  private eioServer: EngineIoServer
   private invokeErrorConverter: (err: Error, client: NydusClient) => unknown
   private idGen: () => string
   private subscriptions: Map<string, Set<NydusClient>>
@@ -173,7 +174,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
 
   constructor(options: Partial<NydusServerOptions> = {}) {
     super()
-    this.eioServer = new eio.Server(options)
+    this.eioServer = new EngineIoServer(options)
     this.invokeErrorConverter = options.invokeErrorConverter ?? defaultErrorConverter
     this.idGen = cuid
     this.clients = Map()
@@ -187,7 +188,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
   /**
    * Attach this NydusServer to a particular HTTP(S) server, making it listen to UPGRADE requests.
    */
-  attach(httpServer: http.Server, options: eio.AttachOptions) {
+  attach(httpServer: http.Server, options: AttachOptions) {
     this.eioServer.attach(httpServer, options)
   }
 
@@ -267,7 +268,9 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
 
   /** Remove a client's subsription to a path (if it was subscribed). */
   unsubscribeClient(client: NydusClient, path: string) {
-    const newSubs = this.subscriptions.update(path, s => s && s.delete(client))
+    // NOTE(tec27): The typings on Immutable are kind of wrong here, and returning undefined is
+    // valid for update
+    const newSubs = this.subscriptions.update(path, s => s?.delete(client) as any)
     if (newSubs === this.subscriptions) {
       return false // client wasn't subscribed before
     }
@@ -305,7 +308,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
     }
   }
 
-  private onConnection(socket: eio.Socket) {
+  private onConnection(socket: Socket) {
     const client = new NydusClient(
       this.idGen(),
       socket,
@@ -314,14 +317,16 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
       this.onParserErrorFunc,
     )
     this.clients = this.clients.set(client.id, client)
-    socket.send(encode(MessageType.Welcome, protocolVersion))
+    socket.send(encode(MessageType.Welcome, protocolVersion), undefined)
     this.emit('connection', client)
   }
 
   private onDisconnect(client: NydusClient) {
     const subs = client.subscriptions
     for (const path of subs.values()) {
-      this.subscriptions = this.subscriptions.update(path, s => s && s.delete(client))
+      // NOTE(tec27): The typings on Immutable are kind of wrong here, and returning undefined is
+      // valid for update
+      this.subscriptions = this.subscriptions.update(path, s => s?.delete(client) as any)
     }
   }
 
@@ -358,7 +363,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
           ) {
             this.emit('invokeError', err, client, msg)
           }
-        } catch (convertErr) {
+        } catch (convertErr: any) {
           result = { status: 500, message: STATUS_CODES[500] }
           this.emit('error', convertErr)
         }
