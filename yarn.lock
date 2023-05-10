@@ -1117,9 +1117,9 @@ normalize-path@^3.0.0, normalize-path@~3.0.0:
   integrity sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==
 
 nydus-client@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/nydus-client/-/nydus-client-4.0.0.tgz#284979dc6c017ef4abf1cb3cf93484901d8466ce"
-  integrity sha512-9YBzYN+IsrUXSoo2u1/fvyXv+MFMHF3XlGVg5JrcxDbrpvX7iJljN7MtFm/4ZEBCvfZzurJOBYkgTtcm4p+r4Q==
+  version "4.0.2"
+  resolved "https://registry.yarnpkg.com/nydus-client/-/nydus-client-4.0.2.tgz#1d9c28389756a2a7664d88859cd9ef6851c7005a"
+  integrity sha512-js9Wb/0rnV9Dv/FC2zC1tLjDD43Y26KroCZaI+daRTCJ3LmxGXAXc5mJdye6YjBi52v8SBNuMdNZjhviVmE35g==
   dependencies:
     backo2 "^1.0.2"
     cuid "^2.1.6"
