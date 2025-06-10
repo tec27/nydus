@@ -1,4 +1,7 @@
-import chai, { expect } from 'chai'
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
+import * as chai from 'chai'
+import { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import http from 'http'
 import { EventEmitter } from 'events'
@@ -13,6 +16,7 @@ import {
   NydusMessage,
   UnvalidatedMessage,
 } from 'nydus-protocol'
+import { protocolVersion as clientProtocolVersion } from 'nydus-client'
 
 import nydus, { InvokeError, NydusClient, NydusServer } from '../index'
 
@@ -32,7 +36,7 @@ describe('server', () => {
   })
 
   it('should have the same protocolVersion as the client', () => {
-    expect(NydusServer.protocolVersion).to.equal(require('nydus-client').protocolVersion)
+    expect(NydusServer.protocolVersion).to.equal(clientProtocolVersion)
   })
 })
 
@@ -59,14 +63,15 @@ describe('nydus(httpServer)', () => {
     n.close()
     server.close()
 
-    n = undefined
-    server = undefined
+    // These will never be undefined during a test so we don't have this in their types
+    n = undefined as any
+    server = undefined as any
   })
 
   async function connectClient() {
     client = new Socket('ws://localhost:' + port, { transports: ['websocket'] })
     return await new Promise<Socket>((resolve, reject) => {
-      client.on('open', () => resolve(client)).on('error', err => reject(err))
+      client!.on('open', () => resolve(client!)).on('error', err => reject(err))
     })
   }
 
@@ -80,20 +85,20 @@ describe('nydus(httpServer)', () => {
 
   it('should send welcome message to clients', done => {
     connectClient()
-    client.on('message', msg => {
+    client!.on('message', msg => {
       expect(decode(msg as string)).to.eql(
         packet({ type: MessageType.Welcome, data: NydusServer.protocolVersion }),
       )
-      client.close()
+      client!.close()
       done()
     })
   })
 
   it('should emit connection events', done => {
-    let promise: Promise<Socket> = null
+    let promise: Promise<Socket> | null = null
     n.on('connection', socket => {
       expect(socket).not.to.be.null
-      promise.then(
+      promise!.then(
         () => done(),
         () => done(),
       )
@@ -105,7 +110,7 @@ describe('nydus(httpServer)', () => {
   it('should publish to subscribed clients', done => {
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ < 1) return
 
       expect(decode(msg as string)).to.eql(
@@ -207,7 +212,7 @@ describe('nydus(httpServer)', () => {
   it('should allow unsubscribing individual clients', done => {
     connectClient()
     let i = 0
-    client.on('message', () => {
+    client!.on('message', () => {
       if (i++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
@@ -226,14 +231,14 @@ describe('nydus(httpServer)', () => {
   it('should allow unsubscribing all clients from a path', done => {
     connectClient()
     let i = 0
-    client.on('message', () => {
+    client!.on('message', () => {
       if (i++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
 
     connectClient()
     let j = 0
-    client.on('message', () => {
+    client!.on('message', () => {
       if (j++ < 1) return
       done(new Error("client shouldn't have received a message"))
     })
@@ -270,9 +275,9 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
       } else {
         expect(decode(msg as string)).to.be.eql(
           packet({ type: MessageType.Result, data: 'hi', id: '27' }),
@@ -285,9 +290,9 @@ describe('nydus(httpServer)', () => {
   it('should send an error when a client invokes on an unregistered path', done => {
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
       } else {
         expect(decode(msg as string)).to.be.eql(
           packet({
@@ -308,9 +313,9 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
       } else {
         expect(decode(msg as string)).to.be.eql(
           packet({
@@ -344,9 +349,9 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
       } else {
         const decoded = decode(msg as string) as NydusErrorMessage<any>
         expect(decoded.type).to.be.eql(MessageType.Error)
@@ -370,9 +375,9 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     let i = 0
-    client.on('message', msg => {
+    client!.on('message', msg => {
       if (i++ === 0) {
-        client.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
       } else {
         expect(decode(msg as string)).to.be.eql(
           packet({
@@ -400,7 +405,7 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     ;(client as any as EventEmitter).once('message', () => {
-      client.send(encode(MessageType.Invoke, 'hi', '27', '/hello/me/whatever'), undefined)
+      client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello/me/whatever'), undefined)
     })
   })
 
@@ -417,7 +422,7 @@ describe('nydus(httpServer)', () => {
 
     connectClient()
     ;(client as any as EventEmitter).once('message', () => {
-      client.send(encode(MessageType.Invoke, { who: 'me' }, '27', '/hello'), undefined)
+      client!.send(encode(MessageType.Invoke, { who: 'me' }, '27', '/hello'), undefined)
     })
   })
 })
