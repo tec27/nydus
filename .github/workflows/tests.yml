@@ -8,10 +8,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Using Node.js 14.x
+      - name: Using Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: '14.x'
+          node-version: '22.x'
 
       - name: Enable corepack
         run: corepack enable

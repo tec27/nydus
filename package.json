@@ -6,7 +6,7 @@
   "module": "dist/modules/index.js",
   "types": "dist/index.d.ts",
   "engines": {
-    "node": ">= 12.4.0"
+    "node": ">= 22.0.0"
   },
   "scripts": {
     "autotest": "ts-mocha -p tsconfig-cjs.json -w --watch-extensions ts -R spec test/**.ts",
