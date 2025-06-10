@@ -40,7 +40,7 @@
     "nanoid": "^5.1.5",
     "nydus-protocol": "^3.0.0",
     "ruta3": "^2.0.1",
-    "typed-emitter": "^2.1.0"
+    "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
