@@ -13,10 +13,9 @@
     "build": "tsc && tsc -p tsconfig-cjs.json",
     "clean": "rimraf dist",
     "lint": "eslint --ext .js,.ts ./",
-    "prepublishOnly": "pnpm run lint && pnpm run test && pnpm run clean && pnpm run build",
+    "prepublishOnly": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run clean && pnpm run build",
     "test": "ts-mocha -p tsconfig-cjs.json -R spec test/**.ts",
-    "testonly": "ts-mocha -p tsconfig-cjs.json -R spec test/**.ts",
-    "posttest": "pnpm run tsc --noEmit && pnpm run lint",
+    "typecheck": "tsc --noEmit",
     "watch": "tsc -w"
   },
   "repository": {

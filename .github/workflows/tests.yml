@@ -25,21 +25,89 @@ jobs:
         id: cache-pnpm-store
         with:
           path: ${{ steps.pnpm-store-dir-path.outputs.store-dir }}
-          key: ${{ runner.os }}-node14-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-node22-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node14-pnpm-
+            ${{ runner.os }}-node22-pnpm-
 
       - name: Cache node_modules
         uses: actions/cache@v4
         id: cache-node-modules
         with:
           path: node_modules
-          key: ${{ runner.os }}-node14-nodemodules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-node22-nodemodules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node14-nodemodules-
+            ${{ runner.os }}-node22-nodemodules-
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Test
         run: pnpm test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Using Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Enable corepack
+        run: corepack enable
+      - name: Get pnpm store directory path
+        id: pnpm-store-dir-path
+        run: echo "store-dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        id: cache-pnpm-store
+        with:
+          path: ${{ steps.pnpm-store-dir-path.outputs.store-dir }}
+          key: ${{ runner.os }}-node22-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node22-pnpm-
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: cache-node-modules
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node22-nodemodules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node22-nodemodules-
+      - name: Install dependencies
+        run: pnpm install
+      - name: Lint
+        run: pnpm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Using Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Enable corepack
+        run: corepack enable
+      - name: Get pnpm store directory path
+        id: pnpm-store-dir-path
+        run: echo "store-dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        id: cache-pnpm-store
+        with:
+          path: ${{ steps.pnpm-store-dir-path.outputs.store-dir }}
+          key: ${{ runner.os }}-node22-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node22-pnpm-
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: cache-node-modules
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node22-nodemodules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node22-nodemodules-
+      - name: Install dependencies
+        run: pnpm install
+      - name: Typecheck
+        run: pnpm run typecheck
