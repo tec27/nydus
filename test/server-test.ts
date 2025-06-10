@@ -18,7 +18,7 @@ import {
   UnvalidatedMessage,
 } from 'nydus-protocol'
 
-import nydus, { InvokeError, NydusClient, NydusServer } from '../index'
+import nydus, { InvokeError, NydusClient, NydusServer } from '../index.js'
 
 chai.use(chaiAsPromised)
 

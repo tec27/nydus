@@ -1,19 +1,19 @@
 {
   "compilerOptions": {
-    "target": "es2018",
-    "module": "es2020",
+    "target": "es2022",
+    "module": "nodenext",
     "declaration": true,
     "declarationDir": "./dist",
     "sourceMap": true,
-    "outDir": "./dist/modules",
+    "outDir": "./dist",
 
     "strict": true,
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "moduleResolution": "node"
+    "moduleResolution": "nodenext"
   },
 
   "include": ["./"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist"]
 }

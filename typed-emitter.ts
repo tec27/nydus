@@ -1,7 +1,10 @@
 import { EventEmitter } from 'events'
-import TypedEmitter, { EventMap } from 'typed-emitter'
+import type TypedEmitterModule from 'typed-emitter'
+import type { EventMap } from 'typed-emitter'
 
 export { EventMap }
+
+type TypedEmitter<T extends EventMap> = TypedEmitterModule.default<T>
 
 /**
  * A typed version of the normal node EventEmitter class, such that emitted/handled events and
@@ -11,7 +14,7 @@ export { EventMap }
  *
  * Example:
  * ```
- * interface FooEvents {
+ * type FooEvents = {
  *   bar: (message: string) => void
  *   baz: (count: number, ...extras: any[]) => void
  * }
@@ -32,9 +35,6 @@ export abstract class TypedEventEmitter<T extends EventMap> extends (EventEmitte
   new <T extends EventMap>(): TypedEmitter<T>
 })<T> {
   constructor() {
-    // NOTE(tec27): No idea why eslint thinks super isn't a constructor here, I assume it's failing
-    // to parse things properly in some way
-    // eslint-disable-next-line constructor-super
     super()
   }
 }

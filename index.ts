@@ -10,14 +10,15 @@ import { fromJS, Map, Set } from 'immutable'
 import { nanoid } from 'nanoid'
 import { decode, encode, MessageType, NydusInvokeMessage, protocolVersion } from 'nydus-protocol'
 import ruta, { Router } from 'ruta3'
-import compose, { ComposableFunc, NextFunc } from './composer'
-import { EventMap, TypedEventEmitter } from './typed-emitter'
+import type { ComposableFunc, NextFunc } from './composer.js'
+import compose from './composer.js'
+import { TypedEventEmitter } from './typed-emitter.js'
 
 export { protocolVersion }
 
 const PACKAGE_ONLY = Symbol('nydus-package-only')
 
-interface NydusClientEvents extends EventMap {
+type NydusClientEvents = {
   /** Fired when the client has disconnected. */
   close: (reason: string, description?: Error) => void
   /** Fired when a general error occurs. */
@@ -142,7 +143,7 @@ export interface NydusServerOptions extends EngineIoServerOptions, AttachOptions
 export type RouteHandler = ComposableFunc
 export { NextFunc }
 
-interface NydusServerEvents extends EventMap {
+type NydusServerEvents = {
   /** Fired when a new client has connected. */
   connection: (client: NydusClient) => void
   /** Fired when a general error occurs. */
