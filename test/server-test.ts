@@ -3,10 +3,11 @@
 import * as chai from 'chai'
 import { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import http from 'http'
-import { EventEmitter } from 'events'
 import { Socket } from 'engine.io-client'
+import { EventEmitter } from 'events'
+import http from 'http'
 import { AddressInfo } from 'net'
+import { protocolVersion as clientProtocolVersion } from 'nydus-client'
 import {
   decode,
   encode,
@@ -16,7 +17,6 @@ import {
   NydusMessage,
   UnvalidatedMessage,
 } from 'nydus-protocol'
-import { protocolVersion as clientProtocolVersion } from 'nydus-client'
 
 import nydus, { InvokeError, NydusClient, NydusServer } from '../index'
 
