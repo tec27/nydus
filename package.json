@@ -1,6 +1,6 @@
 {
   "name": "nydus",
-  "version": "4.0.2",
+  "version": "5.0.0",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,8 +31,7 @@
   },
   "homepage": "https://github.com/tec27/nydus",
   "files": [
-    "dist/**",
-    "dist/index.d.ts"
+    "dist/**"
   ],
   "dependencies": {
     "backo2": "^1.0.2",
