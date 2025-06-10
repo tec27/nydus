@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
-import type TypedEmitterModule from 'typed-emitter'
 import type { EventMap } from 'typed-emitter'
+import TypedEmitterModule from 'typed-emitter'
 
 export { EventMap }
 
