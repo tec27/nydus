@@ -1,6 +1,6 @@
 {
   "name": "nydus",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "description": "WebSocket server using the nydus protocol, a simple RPC/PubSub protocol.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
