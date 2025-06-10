@@ -1,16 +1,16 @@
 import {
-  Server as EngineIoServer,
-  Socket,
-  ServerOptions as EngineIoServerOptions,
   AttachOptions,
+  Server as EngineIoServer,
+  ServerOptions as EngineIoServerOptions,
+  Socket,
 } from 'engine.io'
-import http, { STATUS_CODES } from 'http'
 import { EventEmitter } from 'events'
-import cuid from 'cuid'
+import http, { STATUS_CODES } from 'http'
 import { fromJS, Map, Set } from 'immutable'
+import { nanoid } from 'nanoid'
+import { decode, encode, MessageType, NydusInvokeMessage, protocolVersion } from 'nydus-protocol'
 import ruta, { Router } from 'ruta3'
 import compose, { ComposableFunc, NextFunc } from './composer'
-import { encode, decode, protocolVersion, MessageType, NydusInvokeMessage } from 'nydus-protocol'
 import { EventMap, TypedEventEmitter } from './typed-emitter'
 
 export { protocolVersion }
@@ -176,7 +176,7 @@ export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
     super()
     this.eioServer = new EngineIoServer(options)
     this.invokeErrorConverter = options.invokeErrorConverter ?? defaultErrorConverter
-    this.idGen = cuid
+    this.idGen = nanoid
     this.clients = Map()
     this.subscriptions = Map()
     this.router = ruta()
