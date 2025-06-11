@@ -60,7 +60,7 @@
     "eslint-plugin-prettier": "^5.4.1",
     "globals": "^16.2.0",
     "mocha": "^11.6.0",
-    "nydus-client": "^4.0.6",
+    "nydus-client": "^5.0.0",
     "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^4.1.0",
     "tsup": "^8.5.0",

@@ -82,8 +82,8 @@ importers:
         specifier: ^11.6.0
         version: 11.6.0
       nydus-client:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^5.0.0
+        version: 5.0.0(prettier@3.5.3)(typescript@5.8.3)
       prettier:
         specifier: ^3.5.3
         version: 3.5.3
@@ -761,10 +761,6 @@ packages:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
 
-  cuid@2.1.8:
-    resolution: {integrity: sha512-xiEMER6E7TlTPnDxrM4eRiC6TRgjNX9xzEZ5U/Se2YJKr7Mq4pJn/2XEHjl3STcSh96GmkHPcBXLES8M29wyyg==}
-    deprecated: Cuid and other k-sortable and non-cryptographic ids (Ulid, ObjectId, KSUID, all UUIDs) are all insecure. Use @paralleldrive/cuid2 instead.
-
   debug@4.3.7:
     resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
@@ -1153,11 +1149,9 @@ packages:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
 
-  nydus-client@4.0.6:
-    resolution: {integrity: sha512-i3HBm3Vc1CYiN/V2hPfkQRSba1v0TXGAg/gXzf5kwvxGFEkuuwPuJBmDrdF1v/vffAKiUXjkKoSXFb4mHHdFJw==}
-
-  nydus-protocol@2.0.0:
-    resolution: {integrity: sha512-+k7iQZI0hfFFgeIsMMDpPeLGtjU28uuu/ZQdEKR2x+lBuPRVzQ0Dvfc1kwL630OQHU/CgPlrr1j+XUYK4GLfyQ==}
+  nydus-client@5.0.0:
+    resolution: {integrity: sha512-XZzhy4t6P0WjoxINy2ogOtzPtmMSWT/SHT8jqaPZpRRW6iFhndONPF5FKdGLldd50dQ+hYP9z8/XhjBATeoZQg==}
+    engines: {node: '>=22.12'}
 
   nydus-protocol@3.0.0:
     resolution: {integrity: sha512-Nsu57sI4Ntlx1crWWm1bpkWsJXzoaHJNYbZ/CC4eGn8/K5ss9SH+zLCyOH8yWd2LXui01HOMCZ9L0GQkaQrptQ==}
@@ -1308,9 +1302,6 @@ packages:
   ruta3@2.0.1:
     resolution: {integrity: sha512-0SK6TEzPyfwmLuc1b+LBpEbfsFUsQ99xJuyWRWS3wxukC0XAGpQuNGI5Mrnuldh5sFgh8UMtBLfUrxISa6H/Fg==}
 
-  rxjs@7.8.2:
-    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
-
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
 
@@ -1412,9 +1403,6 @@ packages:
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
-  tslib@2.8.1:
-    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-
   tsup@8.5.0:
     resolution: {integrity: sha512-VmBp77lWNQq6PfuMqCHD3xWl22vEoWsKajkF8t+yMBawlUS8JzEI+vOVMeuNZIuMML8qXRizFKi9oD5glKQVcQ==}
     engines: {node: '>=18'}
@@ -1442,9 +1430,6 @@ packages:
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
-
-  typed-emitter@2.1.0:
-    resolution: {integrity: sha512-g/KzbYKbH5C2vPkaXGu8DJlHrGKHLsM25Zg9WuC9pMGfuvT+X25tZQWo5fK1BjBm8+UrVE9LDCvaY0CQk+fXDA==}
 
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
@@ -2060,8 +2045,6 @@ snapshots:
       shebang-command: 2.0.0
       which: 2.0.2
 
-  cuid@2.1.8: {}
-
   debug@4.3.7:
     dependencies:
       ms: 2.1.3
@@ -2471,24 +2454,22 @@ snapshots:
 
   negotiator@0.6.3: {}
 
-  nydus-client@4.0.6:
+  nydus-client@5.0.0(prettier@3.5.3)(typescript@5.8.3):
     dependencies:
       backo2: 1.0.2
-      cuid: 2.1.8
       engine.io-client: 6.6.3
-      nydus-protocol: 2.0.0
+      nanoid: 5.1.5
+      nydus-protocol: 3.0.0
+      prettier-plugin-organize-imports: 4.1.0(prettier@3.5.3)(typescript@5.8.3)
       ruta3: 2.0.1
-      typed-emitter: 2.1.0
+      tiny-typed-emitter: 2.1.0
     transitivePeerDependencies:
       - bufferutil
+      - prettier
       - supports-color
+      - typescript
       - utf-8-validate
-
-  nydus-protocol@2.0.0:
-    dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
-    transitivePeerDependencies:
-      - supports-color
+      - vue-tsc
 
   nydus-protocol@3.0.0:
     dependencies:
@@ -2619,11 +2600,6 @@ snapshots:
 
   ruta3@2.0.1: {}
 
-  rxjs@7.8.2:
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
   safe-buffer@5.2.1: {}
 
   semver@7.7.2: {}
@@ -2721,9 +2697,6 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  tslib@2.8.1:
-    optional: true
-
   tsup@8.5.0(@swc/core@1.12.0)(tsx@4.19.4)(typescript@5.8.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.25.5)
@@ -2762,10 +2735,6 @@ snapshots:
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
-
-  typed-emitter@2.1.0:
-    optionalDependencies:
-      rxjs: 7.8.2
 
   typescript@5.8.3: {}
 
