@@ -12,7 +12,6 @@ import { decode, encode, MessageType, NydusInvokeMessage, protocolVersion } from
 import ruta, { Router } from 'ruta3'
 import type { ComposableFunc, NextFunc } from './composer.js'
 import compose from './composer.js'
-import { TypedEventEmitter } from './typed-emitter.js'
 
 export { protocolVersion }
 
@@ -20,13 +19,13 @@ const PACKAGE_ONLY = Symbol('nydus-package-only')
 
 type NydusClientEvents = {
   /** Fired when the client has disconnected. */
-  close: (reason: string, description?: Error) => void
+  close: [reason: string, description?: Error]
   /** Fired when a general error occurs. */
-  error: (err: Error) => void
+  error: [err: Error]
 }
 
 /** A client that is connected to the server. */
-export class NydusClient extends TypedEventEmitter<NydusClientEvents> {
+export class NydusClient extends EventEmitter<NydusClientEvents> {
   subscriptions: Set<string>
 
   constructor(
@@ -145,19 +144,19 @@ export { NextFunc }
 
 type NydusServerEvents = {
   /** Fired when a new client has connected. */
-  connection: (client: NydusClient) => void
+  connection: [client: NydusClient]
   /** Fired when a general error occurs. */
-  error: (err: Error) => void
+  error: [err: Error]
   /** Fired when a client receives a message it could not parse. */
-  parserError: (client: NydusClient, msg: string) => void
+  parserError: [client: NydusClient, msg: string]
   /**
    * Fired when an invoke throws an error that gets converted to a 500 (e.g. an internal server
    * error).
    */
-  invokeError: (err: Error, client: NydusClient, msg: NydusInvokeMessage<unknown>) => void
+  invokeError: [err: Error, client: NydusClient, msg: NydusInvokeMessage<unknown>]
 }
 
-export class NydusServer extends TypedEventEmitter<NydusServerEvents> {
+export class NydusServer extends EventEmitter<NydusServerEvents> {
   static readonly protocolVersion = protocolVersion
 
   /** A map of client ID -> client. */
