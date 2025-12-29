@@ -6,12 +6,12 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "lint": "eslint --ext .js,.ts ./",
     "prepublishOnly": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "test": "mocha --import=tsx -R spec test/**.ts",
     "typecheck": "tsc --noEmit",
-    "watch": "tsup --watch"
+    "watch": "tsdown --watch"
   },
   "repository": {
     "type": "git",
@@ -42,6 +42,7 @@
     "ruta3": "^2.0.1"
   },
   "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.2",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@swc/core": "^1.15.7",
@@ -52,6 +53,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.50.1",
     "@typescript-eslint/parser": "^8.50.1",
+    "@vitejs/devtools": "0.0.0-alpha.22",
     "chai": "^6.2.2",
     "chai-as-promised": "^8.0.2",
     "engine.io-client": "^6.6.4",
@@ -63,9 +65,12 @@
     "nydus-client": "^5.1.0",
     "prettier": "^3.7.4",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "tsup": "8.5.0",
+    "publint": "^0.3.16",
+    "tsdown": "^0.18.3",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "unplugin-lightningcss": "^0.4.4",
+    "unplugin-unused": "^0.5.6"
   },
   "packageManager": "pnpm@10.12.1+sha512.f0dda8580f0ee9481c5c79a1d927b9164f2c478e90992ad268bbb2465a736984391d6333d2c327913578b2804af33474ca554ba29c04a8b13060a717675ae3ac"
 }
