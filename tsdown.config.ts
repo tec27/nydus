@@ -8,4 +8,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: false,
+  exports: true,
 })
