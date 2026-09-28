@@ -9,5 +9,5 @@ export default defineConfig({
   clean: true,
   target: 'node22',
   exports: true,
-  skipNodeModulesBundle: true,
+  deps: { neverBundle: true },
 })
