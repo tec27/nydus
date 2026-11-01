@@ -268,14 +268,26 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
 
   /** Remove a client's subsription to a path (if it was subscribed). */
   unsubscribeClient(client: NydusClient, path: string) {
-    // NOTE(tec27): The typings on Immutable are kind of wrong here, and returning undefined is
-    // valid for update
-    const newSubs = this.subscriptions.update(path, s => s?.delete(client) as any)
-    if (newSubs === this.subscriptions) {
+    if (!this.removeSubscriber(path, client)) {
       return false // client wasn't subscribed before
     }
-    this.subscriptions = newSubs
     client.subscriptions = client.subscriptions.delete(path)
+    return true
+  }
+
+  /**
+   * Removes `client` from the subscribers of `path`, dropping the path entirely once nobody is
+   * subscribed so that one-off paths don't accumulate. Returns whether the client was subscribed.
+   */
+  private removeSubscriber(path: string, client: NydusClient) {
+    const subs = this.subscriptions.get(path)
+    if (!subs?.has(client)) {
+      return false
+    }
+    const remaining = subs.delete(client)
+    this.subscriptions = remaining.isEmpty()
+      ? this.subscriptions.delete(path)
+      : this.subscriptions.set(path, remaining)
     return true
   }
 
@@ -322,12 +334,10 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
   }
 
   private onDisconnect(client: NydusClient) {
-    const subs = client.subscriptions
-    for (const path of subs.values()) {
-      // NOTE(tec27): The typings on Immutable are kind of wrong here, and returning undefined is
-      // valid for update
-      this.subscriptions = this.subscriptions.update(path, s => s?.delete(client) as any)
+    for (const path of client.subscriptions.values()) {
+      this.removeSubscriber(path, client)
     }
+    this.clients = this.clients.delete(client.id)
   }
 
   private onInvoke(client: NydusClient, msg: NydusInvokeMessage<unknown>) {

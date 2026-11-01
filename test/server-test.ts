@@ -409,6 +409,32 @@ describe('nydus(httpServer)', () => {
     })
   })
 
+  it('should forget clients and their subscriptions once they disconnect', async () => {
+    const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
+    await connectClient()
+    const c = await connected
+    n.subscribeClient(c, '/hello')
+    expect(n.clients.has(c.id)).to.be.true
+
+    const closed = new Promise<void>(resolve => c.once('close', () => resolve()))
+    client!.close()
+    await closed
+
+    expect(n.clients.has(c.id)).to.be.false
+    expect((n as any).subscriptions.has('/hello')).to.be.false
+  })
+
+  it('should drop paths once their last client unsubscribes', async () => {
+    const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
+    await connectClient()
+    const c = await connected
+    n.subscribeClient(c, '/hello')
+
+    expect(n.unsubscribeClient(c, '/hello')).to.be.true
+    expect((n as any).subscriptions.has('/hello')).to.be.false
+    expect(n.unsubscribeClient(c, '/hello')).to.be.false
+  })
+
   it('should provide invoke payloads to route handlers', done => {
     n.registerRoute('/hello', async data => {
       try {
