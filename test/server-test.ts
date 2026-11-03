@@ -233,6 +233,31 @@ describe('nydus(httpServer)', () => {
     }
   })
 
+  it("should not send async initial data from a subscription that's since ended", async () => {
+    const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
+    const socket = await connectClient()
+    const c = await connected
+    const received: NydusMessage<unknown>[] = []
+    socket.on('message', msg => received.push(decode(msg as string)))
+
+    let resolveStale: (value: string) => void
+    n.subscribeClient(
+      c,
+      '/hello',
+      new Promise<string>(resolve => {
+        resolveStale = resolve
+      }),
+    )
+    n.unsubscribeClient(c, '/hello')
+    n.subscribeClient(c, '/hello', 'fresh')
+    resolveStale!('stale')
+
+    await new Promise(resolve => setTimeout(resolve, 30))
+    expect(received.filter(m => m.type === MessageType.Publish)).to.eql([
+      packet({ type: MessageType.Publish, data: 'fresh', path: '/hello' }),
+    ])
+  })
+
   it('should allow unsubscribing individual clients', done => {
     connectClient()
     let i = 0

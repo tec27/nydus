@@ -167,6 +167,11 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
   private idGen: () => string
   private subscriptions: Map<string, Set<NydusClient>>
   private router: Router<NextFunc>
+  /**
+   * Async initial data that hasn't arrived yet, as a token per client and path. Ending a
+   * subscription drops its token, so the data won't go out under a later re-subscription.
+   */
+  private pendingInitialData = new WeakMap<NydusClient, Map<string, object>>()
 
   private onInvokeFunc = this.onInvoke.bind(this)
   private onCloseFunc = this.onDisconnect.bind(this)
@@ -262,9 +267,16 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
       const castInitialData = initialData as any
       if (!!castInitialData && typeof castInitialData.then === 'function') {
         const promise = castInitialData as Promise<T>
+        const token = {}
+        const pending = this.pendingInitialData.get(client) ?? Map<string, object>()
+        this.pendingInitialData.set(client, pending.set(path, token))
         promise.then(
           (result: T) => {
-            if (this.subscriptions.get(path)?.has(client) && result !== undefined) {
+            if (this.pendingInitialData.get(client)?.get(path) !== token) {
+              return // the subscription this was for has ended
+            }
+            this.dropPendingInitialData(client, path)
+            if (result !== undefined) {
               client.send(PACKAGE_ONLY, encode(MessageType.Publish, result, undefined, path))
             }
           },
@@ -301,7 +313,15 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
     this.subscriptions = remaining.isEmpty()
       ? this.subscriptions.delete(path)
       : this.subscriptions.set(path, remaining)
+    this.dropPendingInitialData(client, path)
     return true
+  }
+
+  private dropPendingInitialData(client: NydusClient, path: string) {
+    const pending = this.pendingInitialData.get(client)
+    if (pending?.has(path)) {
+      this.pendingInitialData.set(client, pending.delete(path))
+    }
   }
 
   /**
@@ -315,6 +335,7 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
 
     for (const c of subs.values()) {
       c.subscriptions = c.subscriptions.delete(path)
+      this.dropPendingInitialData(c, path)
     }
     this.subscriptions = this.subscriptions.delete(path)
     return true
