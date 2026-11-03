@@ -457,6 +457,27 @@ describe('nydus(httpServer)', () => {
     }
   })
 
+  it('should send back a 500 if invoke handlers reject without an error', done => {
+    n.registerRoute('/hello', () => Promise.reject())
+    let invokeErrors = 0
+    n.on('invokeError', () => invokeErrors++)
+
+    connectClient()
+    let i = 0
+    client!.on('message', msg => {
+      if (i++ === 0) {
+        client!.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+      } else {
+        const decoded = decode(msg as string) as NydusErrorMessage<any>
+        expect(decoded.type).to.be.eql(MessageType.Error)
+        expect(decoded.id).to.be.eql('27')
+        expect(decoded.data.status).to.be.eql(500)
+        expect(invokeErrors).to.be.eql(1)
+        done()
+      }
+    })
+  })
+
   it('should allow sending bodies along with invoke rejections', done => {
     n.registerRoute('/hello', async (data, next) => {
       throw new InvokeError('Big error', 527, { hello: 'world' })

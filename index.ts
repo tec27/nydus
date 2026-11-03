@@ -105,7 +105,7 @@ export class InvokeError extends Error {
 }
 
 function isInvokeError(err: Error): err is InvokeError {
-  return typeof (err as any).status === 'number'
+  return typeof (err as any)?.status === 'number'
 }
 
 function defaultErrorConverter(err: Error): unknown {
@@ -119,8 +119,9 @@ function defaultErrorConverter(err: Error): unknown {
     message = err.message
     body = err.body
   } else if (isDev) {
-    message = err.message
-    body ??= err.stack
+    // Handlers can reject with anything, including nothing at all
+    message = err?.message
+    body ??= err?.stack
   }
 
   message ??= STATUS_CODES[status]
