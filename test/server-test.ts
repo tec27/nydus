@@ -417,6 +417,46 @@ describe('nydus(httpServer)', () => {
     })
   })
 
+  it("should still reply to failed invokes if the converted error can't be encoded", async () => {
+    const otherServer = http.createServer()
+    const other = nydus(otherServer, { invokeErrorConverter: () => ({ status: 500, count: 10n }) })
+    other.registerRoute('/hello', async () => {
+      throw new Error('Omg error')
+    })
+    const errors: Error[] = []
+    other.on('error', err => errors.push(err))
+    const otherPort = await new Promise<number>(resolve => {
+      otherServer.listen(0, () => resolve((otherServer.address() as AddressInfo).port))
+    })
+    const socket = new Socket('ws://localhost:' + otherPort, { transports: ['websocket'] })
+
+    try {
+      const reply = await new Promise<string>((resolve, reject) => {
+        let i = 0
+        socket.on('error', reject).on('message', msg => {
+          if (i++ === 0) {
+            socket.send(encode(MessageType.Invoke, 'hi', '27', '/hello'), undefined)
+          } else {
+            resolve(msg as string)
+          }
+        })
+      })
+
+      expect(decode(reply)).to.be.eql(
+        packet({
+          type: MessageType.Error,
+          data: { status: 500, message: 'Internal Server Error' },
+          id: '27',
+        }),
+      )
+      expect(errors).to.have.length(1)
+    } finally {
+      socket.close()
+      other.close()
+      otherServer.close()
+    }
+  })
+
   it('should allow sending bodies along with invoke rejections', done => {
     n.registerRoute('/hello', async (data, next) => {
       throw new InvokeError('Big error', 527, { hello: 'world' })

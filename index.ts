@@ -396,22 +396,32 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
         client.send(PACKAGE_ONLY, encode(MessageType.Result, result, msg.id))
       })
       .catch(err => {
-        let result
+        let packet: string
+        let isInternalError = false
+        let convertFailed = false
+        let convertErr: any
         try {
-          result = this.invokeErrorConverter(err, client)
-          if (
-            result &&
+          const result = this.invokeErrorConverter(err, client)
+          packet = encode(MessageType.Error, result, msg.id)
+          isInternalError =
+            !!result &&
             typeof result === 'object' &&
             result.hasOwnProperty('status') &&
             (result as any).status === 500
-          ) {
-            this.emit('invokeError', err, client, msg)
-          }
-        } catch (convertErr: any) {
-          result = { status: 500, message: STATUS_CODES[500] }
-          this.emit('error', convertErr)
+        } catch (e: any) {
+          convertFailed = true
+          convertErr = e
+          packet = encode(MessageType.Error, { status: 500, message: STATUS_CODES[500] }, msg.id)
         }
-        client.send(PACKAGE_ONLY, encode(MessageType.Error, result, msg.id))
+        // Reply before emitting anything, since listeners (or the lack of an 'error' listener) can
+        // throw, and the client should get its answer regardless
+        client.send(PACKAGE_ONLY, packet)
+
+        if (convertFailed) {
+          this.emit('error', convertErr)
+        } else if (isInternalError) {
+          this.emit('invokeError', err, client, msg)
+        }
       })
   }
 
