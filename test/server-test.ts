@@ -559,6 +559,40 @@ describe('nydus(httpServer)', () => {
     expect(n.unsubscribeClient(c, '/hello')).to.be.false
   })
 
+  it('should treat malformed percent-encoding in message paths as a parser error', async () => {
+    const parserError = new Promise<string>(resolve =>
+      n.once('parserError', (_, msg) => resolve(msg)),
+    )
+    const socket = await connectClient()
+    const closed = new Promise<void>(resolve => socket.once('close', () => resolve()))
+    socket.send('1$27~/hello/%|', undefined)
+
+    expect(await parserError).to.equal('1$27~/hello/%|')
+    await closed
+  })
+
+  it('should send an error for invokes with malformed percent-encoding in params', done => {
+    n.registerRoute('/hello/:who', async () => 'hi')
+
+    connectClient()
+    let i = 0
+    client!.on('message', msg => {
+      if (i++ === 0) {
+        // The protocol decodes this path to `/hello/%`, which isn't a valid URI component
+        client!.send('1$27~/hello/%25|"hi"', undefined)
+      } else {
+        expect(decode(msg as string)).to.be.eql(
+          packet({
+            type: MessageType.Error,
+            data: { status: 400, message: 'Bad Request' },
+            id: '27',
+          }),
+        )
+        done()
+      }
+    })
+  })
+
   it('should provide invoke payloads to route handlers', done => {
     n.registerRoute('/hello', async data => {
       try {

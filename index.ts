@@ -75,7 +75,14 @@ export class NydusClient extends EventEmitter<NydusClientEvents> {
   }
 
   private onMessage(msg: string) {
-    const decoded = decode(msg)
+    let decoded: ReturnType<typeof decode>
+    try {
+      decoded = decode(msg)
+    } catch {
+      // decode() throws on malformed percent-encoding in the path rather than reporting a parser
+      // error, and letting that escape this listener would take down the whole process
+      decoded = { type: MessageType.ParserError }
+    }
     switch (decoded.type) {
       case MessageType.ParserError:
         this.onParserError(this, msg)
@@ -130,6 +137,7 @@ function defaultErrorConverter(err: Error): unknown {
 }
 
 const NOT_FOUND = { message: 'Not Found', status: 404 }
+const BAD_REQUEST = { message: 'Bad Request', status: 400 }
 
 export interface NydusServerOptions extends EngineIoServerOptions, AttachOptions {
   /**
@@ -376,7 +384,14 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
   }
 
   private onInvoke(client: NydusClient, msg: NydusInvokeMessage<unknown>) {
-    const route = this.router.match(msg.path)
+    let route: ReturnType<typeof this.router.match>
+    try {
+      route = this.router.match(msg.path)
+    } catch {
+      // The router decodes params with decodeURIComponent, which throws on malformed escapes
+      client.send(PACKAGE_ONLY, encode(MessageType.Error, BAD_REQUEST, msg.id))
+      return
+    }
     if (!route) {
       client.send(PACKAGE_ONLY, encode(MessageType.Error, NOT_FOUND, msg.id))
       return
