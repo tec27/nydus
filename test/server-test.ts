@@ -424,6 +424,20 @@ describe('nydus(httpServer)', () => {
     expect((n as any).subscriptions.has('/hello')).to.be.false
   })
 
+  it('should ignore subscriptions for clients that have already disconnected', async () => {
+    const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
+    await connectClient()
+    const c = await connected
+
+    const closed = new Promise<void>(resolve => c.once('close', () => resolve()))
+    client!.close()
+    await closed
+
+    n.subscribeClient(c, '/hello', 'hi')
+    expect(c.subscriptions.has('/hello')).to.be.false
+    expect((n as any).subscriptions.has('/hello')).to.be.false
+  })
+
   it('should drop paths once their last client unsubscribes', async () => {
     const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
     await connectClient()

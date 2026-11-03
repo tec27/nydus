@@ -236,7 +236,8 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
    * Add a subscription to a publish path for a client. Whenever messages are published to that
    * path, this client will receive a message (until unsubscribed). If initialData is specified and
    * the client was not previously subscribed, this data will be published to the client
-   * immediately (but not to the other subscribed clients).
+   * immediately (but not to the other subscribed clients). Clients that have already disconnected
+   * are ignored.
    *
    * @param client the NydusClient to subscribe to the specificed path
    * @param path the path to be registered
@@ -245,6 +246,11 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
    *   the client is unsubscribed before the Promise resolves, no data will be sent.
    */
   subscribeClient<T = unknown>(client: NydusClient, path: string, initialData?: T | Promise<T>) {
+    if (this.clients.get(client.id) !== client) {
+      // The client has already disconnected (e.g. while an async handler was running), so nothing
+      // would ever remove this subscription
+      return
+    }
     const newSubs = this.subscriptions.update(path, Set(), s => s.add(client))
     if (newSubs === this.subscriptions) {
       return // client was previously subscribed
