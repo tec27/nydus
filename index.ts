@@ -75,14 +75,7 @@ export class NydusClient extends EventEmitter<NydusClientEvents> {
   }
 
   private onMessage(msg: string) {
-    let decoded: ReturnType<typeof decode>
-    try {
-      decoded = decode(msg)
-    } catch {
-      // decode() throws on malformed percent-encoding in the path rather than reporting a parser
-      // error, and letting that escape this listener would take down the whole process
-      decoded = { type: MessageType.ParserError }
-    }
+    const decoded = decode(msg)
     switch (decoded.type) {
       case MessageType.ParserError:
         this.onParserError(this, msg)

@@ -44,7 +44,7 @@
     "engine.io": "^6.6.11",
     "immutable": "^5.1.9",
     "nanoid": "^6.0.1",
-    "nydus-protocol": "^3.0.0",
+    "nydus-protocol": "^4.0.0",
     "ruta3": "^2.0.1"
   },
   "devDependencies": {
