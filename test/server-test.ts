@@ -209,6 +209,30 @@ describe('nydus(httpServer)', () => {
     })
   })
 
+  it('should not cause unhandled rejections when async initial data fails', async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => unhandled.push(reason)
+    const otherListeners = process.listeners('unhandledRejection')
+    process.removeAllListeners('unhandledRejection')
+    process.on('unhandledRejection', onUnhandled)
+
+    try {
+      const connected = new Promise<NydusClient>(resolve => n.once('connection', resolve))
+      await connectClient()
+      const c = await connected
+
+      const initialData = Promise.reject(new Error('failed to load'))
+      initialData.catch(() => {}) // the caller handles its own rejection
+      n.subscribeClient(c, '/hello', initialData)
+
+      await new Promise(resolve => setTimeout(resolve, 30))
+      expect(unhandled).to.be.empty
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandled)
+      for (const l of otherListeners) process.on('unhandledRejection', l)
+    }
+  })
+
   it('should allow unsubscribing individual clients', done => {
     connectClient()
     let i = 0

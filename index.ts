@@ -243,7 +243,8 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
    * @param path the path to be registered
    * @param initialData optional data to send immediately to this client (and only this client).
    *   This can also be a Promise, in which case the resolved data will be sent to the client. If
-   *   the client is unsubscribed before the Promise resolves, no data will be sent.
+   *   the client is unsubscribed before the Promise resolves, or the Promise rejects, no data will
+   *   be sent.
    */
   subscribeClient<T = unknown>(client: NydusClient, path: string, initialData?: T | Promise<T>) {
     if (this.clients.get(client.id) !== client) {
@@ -261,11 +262,17 @@ export class NydusServer extends EventEmitter<NydusServerEvents> {
       const castInitialData = initialData as any
       if (!!castInitialData && typeof castInitialData.then === 'function') {
         const promise = castInitialData as Promise<T>
-        promise.then((result: T) => {
-          if (this.subscriptions.get(path)?.has(client) && result !== undefined) {
-            client.send(PACKAGE_ONLY, encode(MessageType.Publish, result, undefined, path))
-          }
-        })
+        promise.then(
+          (result: T) => {
+            if (this.subscriptions.get(path)?.has(client) && result !== undefined) {
+              client.send(PACKAGE_ONLY, encode(MessageType.Publish, result, undefined, path))
+            }
+          },
+          () => {
+            // The caller owns this promise and its failure, there's just nothing to send. Leaving
+            // this unhandled would crash the process even if the caller handled the rejection.
+          },
+        )
       } else {
         client.send(PACKAGE_ONLY, encode(MessageType.Publish, initialData, undefined, path))
       }
